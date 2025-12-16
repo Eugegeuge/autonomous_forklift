@@ -67,5 +67,11 @@ For a detailed breakdown of the project phases and future iterations, please ref
 4.  Push to the branch (`git push origin feature/AmazingFeature`).
 5.  Open a Pull Request.
 
+## 👥 Project Team
+*   Hugo Sevilla Martínez
+*   Hugo López Pastor
+*   Juan Diego Serrato Tovar
+*   Pablo Molina Pérez
+
 ## 📄 License
-Distributed under the MIT License.
+Universidad de Alicante.
