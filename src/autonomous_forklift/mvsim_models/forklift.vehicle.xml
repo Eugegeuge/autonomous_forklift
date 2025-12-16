@@ -1,0 +1,72 @@
+<vehicle:class name="forklift">
+    <!--  Dynamical model -->
+    <dynamics class="ackermann">
+        <!-- Rear wheels (Steering in forklifts is usually rear, but standard ackermann is front. 
+             For simplicity we stick to standard ackermann or we can reverse it. 
+             Let's use standard ackermann for now as "forklift-like" behavior) -->
+        
+        <!-- Rear wheels (Drive) -->
+        <rl_wheel pos="-0.5  0.4" mass="2.0" width="0.15" diameter="0.4" />
+        <rr_wheel pos="-0.5 -0.4" mass="2.0" width="0.15" diameter="0.4" />
+        
+        <!-- Front wheels (Steer) - Note: Real forklifts steer with rear wheels. 
+             Mvsim ackermann model assumes front steering. 
+             We can simulate rear steering by reversing the chassis visual or just accepting front steering for this simple sim. -->
+        <fl_wheel mass="2.0" width="0.15" diameter="0.4" />
+        <fr_wheel mass="2.0" width="0.15" diameter="0.4" />
+        <f_wheels_x>0.5</f_wheels_x>
+        <f_wheels_d>0.8</f_wheels_d>
+        <max_steer_ang_deg>45.0</max_steer_ang_deg>
+
+        <chassis mass="500.0" zmin="0.05" zmax="1.5">
+            <!-- Simple box shape for chassis -->
+            <shape>
+                <pt>-0.75 -0.5</pt>
+                <pt> 0.75 -0.5</pt>
+                <pt> 0.75  0.5</pt>
+                <pt>-0.75  0.5</pt>
+            </shape>
+        </chassis>
+
+        <!--   Motor controller -->
+        <controller class="twist_front_steer_pid">
+            <KP>100</KP>  <KI>5</KI> <I_MAX>10</I_MAX> <KD>0</KD>
+            <V>0.0</V><W>0</W>
+            <max_torque>200</max_torque>
+        </controller>
+
+        <drivetrain type="torsen_4wd">
+            <front_rear_split>0.5</front_rear_split>
+            <front_rear_bias>1.5</front_rear_bias>
+            <front_left_right_split>0.5</front_left_right_split>
+            <front_left_right_bias>1.5</front_left_right_bias>
+            <rear_left_right_split>0.5</rear_left_right_split>
+            <rear_left_right_bias>1.5</rear_left_right_bias>
+        </drivetrain>
+
+    </dynamics>
+
+    <friction class="default">
+        <mu>0.8</mu>
+        <C_damping>0.5</C_damping>
+    </friction>
+
+    <!--  Visual model -->
+    <visual>
+        <model_uri>https://mrpt.github.io/mvsim-models/pallet_jack.zip/pallet_jack/pallet_jack.dae</model_uri>
+        <model_roll>90.0</model_roll>
+        <!-- Adjust scale/rotation if needed. The block definition had roll 90. -->
+    </visual>
+    
+    <!-- Sensors -->
+    <sensor class="laser" name="lidar1">
+        <pose>0.6 0 0.5 0 0 0</pose>
+        <fov_deg>180</fov_deg>
+        <nrays>181</nrays>
+        <range_max>10.0</range_max>
+        <visual_model>
+             <model_uri>https://mrpt.github.io/mvsim-models/sensors/hokuyo_utm30.dae</model_uri>
+        </visual_model>
+    </sensor>
+
+</vehicle:class>
