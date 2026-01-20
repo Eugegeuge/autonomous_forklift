@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Warehouse Graph Editor</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: #1e1e1e;
+            color: #eee;
+        }
+
+        #toolbar {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: #333;
+            padding: 10px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+            display: flex;
+            gap: 10px;
+            z-index: 100;
+        }
+
+        #properties-panel {
+            position: absolute;
+            top: 80px;
+            left: 10px;
+            background: #333;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 44px 6px rgba(0, 0, 0, 0.3);
+            width: 250px;
+            display: none;
+            z-index: 100;
+        }
+
+        #properties-panel h3 {
+            margin-top: 0;
+            font-size: 16px;
+            border-bottom: 1px solid #555;
+            padding-bottom: 5px;
+        }
+
+        .prop-row {
+            margin-bottom: 10px;
+        }
+
+        .prop-row label {
+            display: block;
+            font-size: 12px;
+            color: #aaa;
+            margin-bottom: 3px;
+        }
+
+        .prop-row input {
+            width: 100%;
+            padding: 5px;
+            background: #222;
+            border: 1px solid #555;
+            color: white;
+            border-radius: 3px;
+            box-sizing: border-box;
+        }
+
+        button {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background 0.2s;
+        }
+
+        button.active {
+            outline: 2px solid #007acc;
+        }
+
+        #btn-select {
+            background: #555;
+            color: white;
+        }
+
+        #btn-node {
+            background: #007acc;
+            color: white;
+        }
+
+        #btn-edge {
+            background: #28a745;
+            color: white;
+        }
+
+        #btn-delete {
+            background: #dc3545;
+            color: white;
+        }
+
+        #btn-save {
+            background: #ffc107;
+            color: black;
+            margin-left: 20px;
+        }
+
+        #canvas-container {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+            cursor: crosshair;
+        }
+
+        canvas {
+            display: block;
+        }
+
+        .node-label {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 2px 5px;
+            border-radius: 3px;
+            font-size: 12px;
+            pointer-events: none;
+            transform: translate(-50%, -150%);
+        }
+
+        #status {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="toolbar">
+        <button id="btn-select" onclick="setMode('select')" class="active">Select / Move</button>
+        <button id="btn-node" onclick="setMode('node')">Add Node</button>
+        <button id="btn-edge" onclick="setMode('edge')">Connect Nodes</button>
+        <button id="btn-delete" onclick="setMode('delete')">Delete</button>
+        <button id="btn-save" onclick="saveGraph()">💾 Save Graph</button>
+    </div>
+
+    <div id="properties-panel">
+        <h3>Node Properties</h3>
+        <div class="prop-row">
+            <label>ID</label>
+            <input type="text" id="prop-id" readonly disabled>
+        </div>
+        <div class="prop-row">
+            <label>Name (e.g. ESTANTERIA_1)</label>
+            <input type="text" id="prop-name" oninput="updateNodeProperty('name', this.value)">
+        </div>
+    </div>
+
+    <div id="status">Ready</div>
+
+    <div id="canvas-container">
+        <canvas id="graphCanvas"></canvas>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('graphCanvas');
+        const ctx = canvas.getContext('2d');
+        const container = document.getElementById('canvas-container');
+        const propPanel = document.getElementById('properties-panel');
+        const propId = document.getElementById('prop-id');
+        const propName = document.getElementById('prop-name');
+
+        // State
+        let nodes = [];
+        let edges = [];
+        let mode = 'select'; // select, node, edge, delete
+        let selectedNode = null;
+        let draggingNode = null;
+        let edgeStartNode = null;
+        let offset = { x: 0, y: 0 }; // Pan offset
+        let scale = 20.0; // Pixels per meter (Zoom)
+        let isPanning = false;
+        let lastMouse = { x: 0, y: 0 };
+
+        // Map State
+        let mapImage = null;
+        let mapInfo = null;
+
+        // Config
+        const NODE_RADIUS = 10;
+
+        // Resize canvas
+        function resize() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            draw();
+        }
+        window.addEventListener('resize', resize);
+
+        // --- API ---
+
+        async function loadGraph() {
+            try {
+                const response = await fetch('/api/graph');
+                const data = await response.json();
+                parseGeoJSON(data);
+                draw();
+                setStatus('Graph loaded successfully.');
+            } catch (e) {
+                console.error(e);
+                setStatus('Error loading graph.');
+            }
+        }
+
+        async function loadMap() {
+            try {
+                // Get Info
+                const infoRes = await fetch('/api/map/info');
+                mapInfo = await infoRes.json();
+
+                if (mapInfo.image) {
+                    // Load Image
+                    const img = new Image();
+                    img.src = '/api/map/image';
+                    img.onload = () => {
+                        mapImage = img;
+                        setStatus('Map loaded.');
+                        draw();
+                    };
+                }
+            } catch (e) {
+                console.error("Error loading map:", e);
+            }
+        }
+
+        async function saveGraph() {
+            const geojson = toGeoJSON();
+            try {
+                const response = await fetch('/api/graph', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(geojson)
+                });
+                const res = await response.json();
+                setStatus(res.message);
+            } catch (e) {
+                console.error(e);
+                setStatus('Error saving graph.');
+            }
+        }
+
+        function parseGeoJSON(data) {
+            nodes = [];
+            edges = [];
+
+            if (!data.features) return;
+
+            data.features.forEach(f => {
+                if (f.geometry.type === 'Point') {
+                    nodes.push({
+                        id: f.id,
+                        x: f.geometry.coordinates[0],
+                        y: f.geometry.coordinates[1],
+                        name: f.properties.name || f.id
+                    });
+                } else if (f.geometry.type === 'LineString') {
+                    edges.push({
+                        id: f.id,
+                        from: f.properties.from,
+                        to: f.properties.to,
+                        weight: f.properties.weight || 1.0
+                    });
+                }
+            });
+        }
+
+        function toGeoJSON() {
+            const features = [];
+
+            // Nodes
+            nodes.forEach(n => {
+                features.push({
+                    type: "Feature",
+                    id: n.id,
+                    geometry: {
+                        type: "Point",
+                        coordinates: [n.x, n.y]
+                    },
+                    properties: {
+                        name: n.name
+                    }
+                });
+            });
+
+            // Edges
+            edges.forEach(e => {
+                const n1 = nodes.find(n => n.id === e.from);
+                const n2 = nodes.find(n => n.id === e.to);
+                if (n1 && n2) {
+                    features.push({
+                        type: "Feature",
+                        id: e.id || `edge_${e.from}_${e.to}`,
+                        geometry: {
+                            type: "LineString",
+                            coordinates: [[n1.x, n1.y], [n2.x, n2.y]]
+                        },
+                        properties: {
+                            from: e.from,
+                            to: e.to,
+                            weight: e.weight
+                        }
+                    });
+                }
+            });
+
+            return { type: "FeatureCollection", features: features };
+        }
+
+        // --- Interaction ---
+
+        function setMode(m) {
+            mode = m;
+            document.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+            document.getElementById(`btn-${m}`).classList.add('active');
+
+            selectedNode = null;
+            edgeStartNode = null;
+            draggingNode = null;
+            updatePropertiesPanel();
+            setStatus(`Mode: ${m.toUpperCase()}`);
+            draw();
+        }
+
+        function setStatus(msg) {
+            document.getElementById('status').innerText = msg;
+        }
+
+        function updatePropertiesPanel() {
+            if (selectedNode) {
+                propPanel.style.display = 'block';
+                propId.value = selectedNode.id;
+                propName.value = selectedNode.name;
+            } else {
+                propPanel.style.display = 'none';
+            }
+        }
+
+        function updateNodeProperty(key, value) {
+            if (selectedNode) {
+                selectedNode[key] = value;
+                draw();
+            }
+        }
+
+        // Coordinate conversion
+        function toWorld(screenX, screenY) {
+            return {
+                x: (screenX - canvas.width / 2 - offset.x) / scale,
+                y: -(screenY - canvas.height / 2 - offset.y) / scale // Flip Y for standard map coords
+            };
+        }
+
+        function toScreen(worldX, worldY) {
+            return {
+                x: worldX * scale + canvas.width / 2 + offset.x,
+                y: -worldY * scale + canvas.height / 2 + offset.y
+            };
+        }
+
+        function getNodeAt(x, y) {
+            // Check distance in screen pixels
+            for (let n of nodes) {
+                const s = toScreen(n.x, n.y);
+                const dx = s.x - x;
+                const dy = s.y - y;
+                if (dx * dx + dy * dy < NODE_RADIUS * NODE_RADIUS * 1.5) {
+                    return n;
+                }
+            }
+            return null;
+        }
+
+        canvas.addEventListener('mousedown', e => {
+            const mouse = { x: e.clientX, y: e.clientY };
+            const world = toWorld(mouse.x, mouse.y);
+            const clickedNode = getNodeAt(mouse.x, mouse.y);
+
+            if (e.button === 1 || (e.button === 0 && e.shiftKey)) {
+                // Middle click or Shift+Click -> Pan
+                isPanning = true;
+                lastMouse = mouse;
+                return;
+            }
+
+            if (mode === 'select') {
+                if (clickedNode) {
+                    draggingNode = clickedNode;
+                    selectedNode = clickedNode;
+                } else {
+                    selectedNode = null;
+                    // Start panning if clicked on empty space
+                    isPanning = true;
+                    lastMouse = mouse;
+                }
+            } else if (mode === 'node') {
+                if (!clickedNode) {
+                    const id = `node_${nodes.length + 1}_${Date.now()}`;
+                    nodes.push({
+                        id: id,
+                        x: world.x,
+                        y: world.y,
+                        name: `N${nodes.length + 1}`
+                    });
+                    setStatus(`Added node N${nodes.length}`);
+                }
+            } else if (mode === 'edge') {
+                if (clickedNode) {
+                    if (!edgeStartNode) {
+                        edgeStartNode = clickedNode;
+                        setStatus(`Select second node to connect from ${clickedNode.name}`);
+                    } else {
+                        if (clickedNode !== edgeStartNode) {
+                            // Check if edge exists
+                            const exists = edges.some(e =>
+                                (e.from === edgeStartNode.id && e.to === clickedNode.id) ||
+                                (e.from === clickedNode.id && e.to === edgeStartNode.id)
+                            );
+
+                            if (!exists) {
+                                edges.push({
+                                    from: edgeStartNode.id,
+                                    to: clickedNode.id,
+                                    weight: 1.0
+                                });
+                                setStatus(`Connected ${edgeStartNode.name} to ${clickedNode.name}`);
+                            }
+                            edgeStartNode = null;
+                        }
+                    }
+                } else {
+                    edgeStartNode = null;
+                }
+            } else if (mode === 'delete') {
+                if (clickedNode) {
+                    // Remove node and connected edges
+                    nodes = nodes.filter(n => n !== clickedNode);
+                    edges = edges.filter(e => e.from !== clickedNode.id && e.to !== clickedNode.id);
+                    setStatus(`Deleted node ${clickedNode.name}`);
+                    if (selectedNode === clickedNode) selectedNode = null;
+                }
+            }
+
+            updatePropertiesPanel();
+            draw();
+        });
+
+        canvas.addEventListener('mousemove', e => {
+            const mouse = { x: e.clientX, y: e.clientY };
+
+            if (isPanning) {
+                offset.x += mouse.x - lastMouse.x;
+                offset.y += mouse.y - lastMouse.y;
+                lastMouse = mouse;
+                draw();
+                return;
+            }
+
+            if (draggingNode) {
+                const world = toWorld(mouse.x, mouse.y);
+                draggingNode.x = world.x;
+                draggingNode.y = world.y;
+                draw();
+            }
+        });
+
+        canvas.addEventListener('mouseup', () => {
+            isPanning = false;
+            draggingNode = null;
+        });
+
+        canvas.addEventListener('wheel', e => {
+            e.preventDefault();
+            const zoomSpeed = 0.1;
+            if (e.deltaY < 0) {
+                scale *= (1 + zoomSpeed);
+            } else {
+                scale *= (1 - zoomSpeed);
+            }
+            draw();
+        });
+
+        // --- Rendering ---
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            const center = toScreen(0, 0);
+
+            // Draw Map
+            if (mapImage && mapInfo) {
+                const res = mapInfo.resolution;
+                const origin = mapInfo.origin; // [x, y, z]
+
+                // Map dimensions in world meters
+                const mapW = mapImage.width * res;
+                const mapH = mapImage.height * res;
+
+                // Top-Left corner in World coordinates
+                // Origin is bottom-left of the image
+                const worldX = origin[0];
+                const worldY = origin[1] + mapH;
+
+                // Convert to screen
+                const tl = toScreen(worldX, worldY);
+                const br = toScreen(origin[0] + mapW, origin[1]);
+
+                // Draw
+                // Note: Canvas draws from top-left. 
+                // toScreen flips Y, so tl.y should be smaller than br.y if we are zoomed out normally?
+                // Wait, toScreen(y) = -y * scale. 
+                // If y_top > y_bottom, then screen_y_top < screen_y_bottom. Correct.
+
+                const width = br.x - tl.x;
+                const height = br.y - tl.y;
+
+                ctx.globalAlpha = 0.5; // Semi-transparent
+                ctx.drawImage(mapImage, tl.x, tl.y, width, height);
+                ctx.globalAlpha = 1.0;
+            }
+
+            // Grid
+            ctx.strokeStyle = '#333';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+
+            // Draw axes
+            ctx.strokeStyle = '#555';
+            ctx.beginPath();
+            ctx.moveTo(0, center.y);
+            ctx.lineTo(canvas.width, center.y);
+            ctx.moveTo(center.x, 0);
+            ctx.lineTo(center.x, canvas.height);
+            ctx.stroke();
+
+            // Edges
+            ctx.strokeStyle = '#28a745';
+            ctx.lineWidth = 2;
+            edges.forEach(e => {
+                const n1 = nodes.find(n => n.id === e.from);
+                const n2 = nodes.find(n => n.id === e.to);
+                if (n1 && n2) {
+                    const s1 = toScreen(n1.x, n1.y);
+                    const s2 = toScreen(n2.x, n2.y);
+                    ctx.beginPath();
+                    ctx.moveTo(s1.x, s1.y);
+                    ctx.lineTo(s2.x, s2.y);
+                    ctx.stroke();
+                }
+            });
+
+            // Temporary line for edge creation
+            if (mode === 'edge' && edgeStartNode) {
+                const s = toScreen(edgeStartNode.x, edgeStartNode.y);
+                // We don't have current mouse pos here easily without tracking it globally
+                // Skipping dynamic line for simplicity, but highlighting start node
+                ctx.beginPath();
+                ctx.arc(s.x, s.y, NODE_RADIUS + 5, 0, Math.PI * 2);
+                ctx.strokeStyle = 'yellow';
+                ctx.stroke();
+            }
+
+            // Nodes
+            nodes.forEach(n => {
+                const s = toScreen(n.x, n.y);
+
+                ctx.beginPath();
+                ctx.arc(s.x, s.y, NODE_RADIUS, 0, Math.PI * 2);
+                ctx.fillStyle = (n === selectedNode) ? '#ffc107' : '#007acc';
+                if (n === edgeStartNode) ctx.fillStyle = '#28a745';
+                ctx.fill();
+                ctx.strokeStyle = 'white';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+
+                // Label
+                ctx.fillStyle = 'white';
+                ctx.font = '12px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText(n.name, s.x, s.y - 15);
+            });
+        }
+
+        // Init
+        resize();
+        loadGraph();
+        loadMap();
+
+    </script>
+
+</body>
+
+</html>

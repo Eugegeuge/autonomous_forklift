@@ -1,0 +1,367 @@
+#!/usr/bin/env python3
+import rclpy
+from rclpy.node import Node
+from std_msgs.msg import String
+import tkinter as tk
+from tkinter import ttk, scrolledtext
+import threading
+import time
+import datetime
+
+class InterfaceNode(Node):
+    def __init__(self, gui_callback):
+        super().__init__('interface_node')
+        self.gui_callback = gui_callback
+        
+        # Publishers
+        self.pub_tarea = self.create_publisher(String, 'tarea', 10)
+        self.pub_nav = self.create_publisher(String, 'navegacion', 10)
+        self.pub_orient = self.create_publisher(String, 'orientacion', 10)
+        self.pub_grasp = self.create_publisher(String, 'agarre', 10)
+        self.pub_deposit = self.create_publisher(String, 'deposicion', 10)
+        self.pub_status = self.create_publisher(String, 'estado', 10)
+        self.pub_goal = self.create_publisher(String, 'navigation_goal', 10)
+        self.pub_docking = self.create_publisher(String, 'docking_trigger', 10)
+        
+        # Subscribers
+        self.sub_nav_status = self.create_subscription(String, 'navigation_status', self.nav_status_callback, 10)
+        self.sub_dock_status = self.create_subscription(String, 'docking_status', self.dock_status_callback, 10)
+        
+        self.get_logger().info('Interface Node Started')
+
+    def nav_status_callback(self, msg):
+        self.get_logger().info(f'RECV [navigation_status]: {msg.data}')
+        if self.gui_callback:
+            self.gui_callback("NAV", msg.data)
+
+    def dock_status_callback(self, msg):
+        self.get_logger().info(f'RECV [docking_status]: {msg.data}')
+        if self.gui_callback:
+            self.gui_callback("DOCK", msg.data)
+
+    def publish_message(self, topic, payload):
+        msg = String()
+        msg.data = payload
+        
+        if topic == 'tarea':
+            self.pub_tarea.publish(msg)
+        elif topic == 'navegacion':
+            self.pub_nav.publish(msg)
+        elif topic == 'orientacion':
+            self.pub_orient.publish(msg)
+        elif topic == 'agarre':
+            self.pub_grasp.publish(msg)
+        elif topic == 'deposicion':
+            self.pub_deposit.publish(msg)
+        elif topic == 'estado':
+            self.pub_status.publish(msg)
+        elif topic == 'navigation_goal':
+            self.pub_goal.publish(msg)
+        elif topic == 'docking_trigger':
+            self.pub_docking.publish(msg)
+            
+        self.get_logger().info(f'PUB [{topic}]: {payload}')
+
+class ControlPanel:
+    def __init__(self, root, ros_node):
+        self.root = root
+        self.ros_node = ros_node
+        self.ros_node.gui_callback = self.on_status_received # Link callback
+        
+        self.root.title("HJP LOGÍSTICA - Control de Flota")
+        self.root.geometry("535x750")
+        
+        # --- ESTILOS ---
+        self.COLOR_BG = "#1e293b"
+        self.COLOR_TEXT = "#ffffff"
+        self.COLOR_ACCENT = "#38bdf8"
+        self.COLOR_STATUS = "#fbbf24"
+        
+        self.root.configure(bg=self.COLOR_BG) 
+
+        self.is_active = False
+        self.mission_phase = 0 
+        # Phases:
+        # 1: Nav -> Origin
+        # 2: Docking @ Origin
+        # 3: Pick (Simulated)
+        # 4: Nav -> Target
+        # 5: Docking @ Target
+        # 6: Drop (Simulated)
+        # 7: Nav -> Home
+        
+        self.current_origin = ""
+        self.current_target = ""
+
+        # --- FUENTES ---
+        font_title = ("Helvetica", 22, "bold")
+        font_label = ("Arial", 12, "bold") 
+        font_input = ("Arial", 14)
+        font_btn_start = ("Arial", 14, "bold")
+        font_status_title = ("Arial", 12)
+        font_status_val = ("Courier", 26, "bold")   
+        font_btn_stop = ("Arial", 14, "bold")
+        font_console = ("Consolas", 10) 
+
+        self.root.option_add('*TCombobox*Listbox.font', font_input)
+
+        # --- UBICACIONES ---
+        # --- UBICACIONES (Dynamic from Graph) ---
+        self.posibles_ubicaciones = []
+        try:
+            import json
+            import os
+            from ament_index_python.packages import get_package_share_directory
+            
+            pkg_dir = get_package_share_directory('autonomous_forklift')
+            graph_file = os.path.join(pkg_dir, 'config', 'warehouse_graph.geojson')
+            
+            with open(graph_file, 'r') as f:
+                data = json.load(f)
+                for feature in data.get('features', []):
+                    if feature['geometry']['type'] == 'Point':
+                        name = feature['properties'].get('name')
+                        if name:
+                            self.posibles_ubicaciones.append(name)
+            
+            self.posibles_ubicaciones.sort()
+            # Ensure HOME is first if present
+            if "HOME" in self.posibles_ubicaciones:
+                self.posibles_ubicaciones.remove("HOME")
+                self.posibles_ubicaciones.insert(0, "HOME")
+                
+        except Exception as e:
+            print(f"Error loading graph: {e}")
+            self.posibles_ubicaciones = ["HOME", "ESTANTERIA_1", "ESTANTERIA_2"] # Fallback
+
+        # --- GUI ELEMENTS ---
+        lbl_title = tk.Label(root, text="CONTROL DE MISIÓN", font=font_title, bg=self.COLOR_BG, fg=self.COLOR_ACCENT)
+        lbl_title.pack(pady=(30, 20)) 
+
+        frame_inputs = tk.Frame(root, bg=self.COLOR_BG)
+        frame_inputs.pack(pady=10) 
+
+        style = ttk.Style()
+        style.theme_use('clam')
+        style.configure("TCombobox", fieldbackground="#f1f5f9", background="#94a3b8", foreground="#0f172a", arrowsize=20)
+
+        # Origen
+        tk.Label(frame_inputs, text="Origen (ID_LOC1):", font=font_label, bg=self.COLOR_BG, fg=self.COLOR_TEXT).grid(row=0, column=0, padx=10, pady=10, sticky="e")
+        self.combo_origin = ttk.Combobox(frame_inputs, values=self.posibles_ubicaciones, font=font_input, width=20, state="readonly")
+        self.combo_origin.grid(row=0, column=1, padx=10, pady=10)
+        self.combo_origin.current(0) 
+
+        # Destino
+        tk.Label(frame_inputs, text="Destino (ID_LOC2):", font=font_label, bg=self.COLOR_BG, fg=self.COLOR_TEXT).grid(row=1, column=0, padx=10, pady=10, sticky="e")
+        self.combo_target = ttk.Combobox(frame_inputs, values=self.posibles_ubicaciones, font=font_input, width=20, state="readonly")
+        self.combo_target.grid(row=1, column=1, padx=10, pady=10)
+        self.combo_target.current(1) 
+
+        # Boton Start
+        self.btn_start = tk.Button(root, text="INICIAR TAREA", command=self.start_mission, 
+                                   bg=self.COLOR_ACCENT, fg="black", font=font_btn_start, 
+                                   height=2, width=18, cursor="hand2")
+        self.btn_start.pack(pady=20)
+
+        # --- NAVEGACIÓN DIRECTA ---
+        frame_direct = tk.LabelFrame(root, text="Navegación Directa", font=font_label, bg=self.COLOR_BG, fg=self.COLOR_ACCENT, bd=2)
+        frame_direct.pack(pady=5, padx=20, fill="x")
+
+        self.combo_direct = ttk.Combobox(frame_direct, values=self.posibles_ubicaciones, font=font_input, width=15, state="readonly")
+        self.combo_direct.pack(side="left", padx=10, pady=10)
+        self.combo_direct.current(0)
+
+        self.btn_go = tk.Button(frame_direct, text="IR AHORA", command=self.go_direct,
+                                bg="#22c55e", fg="black", font=("Arial", 12, "bold"),
+                                height=1, width=10, cursor="hand2")
+        self.btn_go.pack(side="right", padx=10, pady=10)
+
+        # Status
+        self.lbl_status_title = tk.Label(root, text="ESTADO DEL ROBOT:", font=font_status_title, bg=self.COLOR_BG, fg="#94a3b8")
+        self.lbl_status_title.pack(pady=(10, 5))
+        
+        self.lbl_current_state = tk.Label(root, text="REPOSO", font=font_status_val, bg=self.COLOR_BG, fg=self.COLOR_STATUS)
+        self.lbl_current_state.pack(pady=10)
+
+        # Log
+        lbl_log = tk.Label(root, text="REGISTRO DE COMUNICACIONES (TOPICS):", font=("Arial", 10, "bold"), bg=self.COLOR_BG, fg="#cbd5e1")
+        lbl_log.pack(pady=(20, 5), anchor="w", padx=20)
+
+        self.console_log = scrolledtext.ScrolledText(root, height=8, bg="#0f172a", fg="#22c55e", font=font_console, state='disabled', borderwidth=1, relief="solid")
+        self.console_log.pack(padx=20, pady=5, fill="x")
+
+        # Stop
+        btn_stop = tk.Button(root, text="PARADA DE EMERGENCIA", command=self.emergency_stop, 
+                             bg="#ef4444", fg="white", font=font_btn_stop, 
+                             height=2, width=25, cursor="hand2")
+        btn_stop.pack(side=tk.BOTTOM, pady=30)
+
+    def log_message(self, message):
+        timestamp = datetime.datetime.now().strftime("%H:%M:%S")
+        full_msg = f"[{timestamp}] {message}\n"
+        self.console_log.config(state='normal')
+        self.console_log.insert(tk.END, full_msg)
+        self.console_log.see(tk.END)
+        self.console_log.config(state='disabled')
+
+    def publicar_mensaje(self, topic, payload):
+        self.ros_node.publish_message(topic, payload)
+        msg = f"PUB [{topic}]: {payload}"
+        self.log_message(msg)
+
+    def go_direct(self):
+        target = self.combo_direct.get()
+        self.log_message(f"--> ORDEN DIRECTA: Ir a {target}")
+        
+        # Stop any active mission
+        self.is_active = False 
+        self.mission_phase = 0
+        
+        self.lbl_current_state.config(text=f"YENDO A {target}", fg=self.COLOR_STATUS)
+        
+        # Ensure Nav is ON
+        self.publicar_mensaje("navegacion", "STATUS: ON")
+        # Send Goal
+        self.publicar_mensaje("navigation_goal", target)
+
+    def start_mission(self):
+        origin = self.combo_origin.get()
+        target = self.combo_target.get()
+        
+        if origin == target:
+            self.log_message("⚠️ WARN: Origen y Destino idénticos")
+        
+        self.log_message(f"--> ORDEN ENVIADA: {origin} -> {target}")
+        
+        self.current_origin = origin
+        self.current_target = target
+        self.is_active = True
+        self.mission_phase = 1 # Start Phase 1: Go to Origin
+        
+        self.publicar_mensaje("tarea", "STATUS: ON")
+        self.execute_phase()
+
+    def execute_phase(self):
+        if not self.is_active: return
+
+        if self.mission_phase == 1:
+            # Phase 1: Navigate to Origin
+            self.lbl_current_state.config(text="NAV -> ORIGEN", fg=self.COLOR_STATUS)
+            self.publicar_mensaje("estado", "FASE 1: Yendo a Origen")
+            self.publicar_mensaje("navegacion", "STATUS: ON")
+            self.publicar_mensaje("navigation_goal", self.current_origin)
+            
+        elif self.mission_phase == 2:
+            # Phase 2: Docking @ Origin
+            self.lbl_current_state.config(text="DOCKING (ARUCO)", fg="#a855f7")
+            self.publicar_mensaje("estado", "FASE 2: Aproximación Fina (ArUco)")
+            self.publicar_mensaje("navegacion", "STATUS: OFF") # Ensure Nav is OFF
+            self.publicar_mensaje("docking_trigger", "START")
+            
+        elif self.mission_phase == 3:
+            # Phase 3: Pick (Simulated)
+            self.lbl_current_state.config(text="RECOGIENDO CARGA", fg="#eab308")
+            self.publicar_mensaje("estado", "FASE 3: Operación de Carga")
+            self.publicar_mensaje("docking_trigger", "STOP") # Stop Docking
+            self.publicar_mensaje("agarre", "STATUS: ON")
+            # Simulate time for picking
+            self.root.after(3000, self.advance_phase)
+            
+        elif self.mission_phase == 4:
+            # Phase 4: Navigate to Target
+            self.lbl_current_state.config(text="NAV -> DESTINO", fg=self.COLOR_STATUS)
+            self.publicar_mensaje("estado", "FASE 4: Yendo a Destino")
+            self.publicar_mensaje("agarre", "STATUS: OFF")
+            self.publicar_mensaje("navegacion", "STATUS: ON")
+            self.log_message(f"DEBUG: Phase 4 sending goal: {self.current_target}")
+            self.publicar_mensaje("navigation_goal", self.current_target)
+            
+        elif self.mission_phase == 5:
+            # Phase 5: Docking @ Target
+            self.lbl_current_state.config(text="DOCKING (ARUCO)", fg="#a855f7")
+            self.publicar_mensaje("estado", "FASE 5: Aproximación Fina (ArUco)")
+            self.publicar_mensaje("navegacion", "STATUS: OFF")
+            self.publicar_mensaje("docking_trigger", "START")
+            
+        elif self.mission_phase == 6:
+            # Phase 6: Drop (Simulated)
+            self.lbl_current_state.config(text="DEPOSITANDO CARGA", fg="#eab308")
+            self.publicar_mensaje("estado", "FASE 6: Operación de Descarga")
+            self.publicar_mensaje("docking_trigger", "STOP")
+            self.publicar_mensaje("deposicion", "STATUS: ON")
+            # Simulate time for dropping
+            self.root.after(3000, self.advance_phase)
+            
+        elif self.mission_phase == 7:
+            # Phase 7: Navigate to Home
+            self.lbl_current_state.config(text="NAV -> HOME", fg=self.COLOR_STATUS)
+            self.publicar_mensaje("estado", "FASE 7: Volviendo a Casa")
+            self.publicar_mensaje("deposicion", "STATUS: OFF")
+            self.publicar_mensaje("navegacion", "STATUS: ON")
+            self.log_message(f"DEBUG: Phase 7 sending goal: HOME")
+            self.publicar_mensaje("navigation_goal", "HOME")
+            
+        elif self.mission_phase == 8:
+            # Mission Complete
+            self.lbl_current_state.config(text="REPOSO", fg="#22c55e")
+            self.publicar_mensaje("estado", "MISION COMPLETADA")
+            self.publicar_mensaje("tarea", "STATUS: OFF")
+            self.publicar_mensaje("navegacion", "STATUS: OFF")
+            self.is_active = False
+            self.mission_phase = 0
+
+    def on_status_received(self, source, status):
+        """Callback when Navigation or Docking Node reports status"""
+        if not self.is_active: return
+        
+        self.log_message(f"RECV {source}: {status}")
+        
+        if source == "NAV" and status == "REACHED":
+            # Navigation leg complete
+            if self.mission_phase in [1, 4, 7]: # Only advance if we are in a Nav phase
+                self.log_message("✅ Tramo NAV completado. Avanzando...")
+                self.root.after(1000, self.advance_phase)
+                
+        elif source == "DOCK":
+            if status == "SUCCESS":
+                # Docking complete
+                if self.mission_phase in [2, 5]: # Only advance if we are in a Docking phase
+                    self.log_message("✅ Docking completado. Avanzando...")
+                    self.root.after(1000, self.advance_phase)
+            elif status == "FAILED":
+                # Docking failed (timeout)
+                self.log_message("❌ Docking FALLIDO (Timeout). Volviendo a casa...")
+                self.mission_phase = 7 # Force jump to Phase 7 (Return Home)
+                self.execute_phase()
+
+    def advance_phase(self):
+        if not self.is_active: return
+        self.mission_phase += 1
+        self.execute_phase()
+
+    def emergency_stop(self):
+        self.publicar_mensaje("tarea", "STATUS: OFF")
+        self.publicar_mensaje("navegacion", "STATUS: OFF")
+        self.publicar_mensaje("docking_trigger", "STOP")
+        self.is_active = False
+        self.mission_phase = 0
+        self.lbl_current_state.config(text="STOPPED", fg="#ef4444")
+
+def main():
+    rclpy.init()
+    # Pass None initially, set in ControlPanel init
+    ros_node = InterfaceNode(None)
+    
+    # Thread para ROS spin
+    spin_thread = threading.Thread(target=rclpy.spin, args=(ros_node,), daemon=True)
+    spin_thread.start()
+
+    root = tk.Tk()
+    app = ControlPanel(root, ros_node)
+    root.mainloop()
+
+    ros_node.destroy_node()
+    rclpy.shutdown()
+
+if __name__ == "__main__":
+    main()

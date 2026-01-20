@@ -1,0 +1,263 @@
+{
+    "type": "FeatureCollection",
+    "features": [
+        {
+            "type": "Feature",
+            "id": "node_1",
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    0.0,
+                    5.0
+                ]
+            },
+            "properties": {
+                "name": "ESTANTERIA_1",
+                "description": "Upper corridor - Start"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": "node_2",
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    5.0,
+                    5.0
+                ]
+            },
+            "properties": {
+                "name": "ESTANTERIA_2",
+                "description": "Upper corridor - Middle"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": "node_3",
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    10.0,
+                    5.0
+                ]
+            },
+            "properties": {
+                "name": "ESTANTERIA_3",
+                "description": "Upper corridor - End"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": "node_4",
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    0.0,
+                    0.0
+                ]
+            },
+            "properties": {
+                "name": "HOME",
+                "description": "Lower corridor - Start"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": "node_5",
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    5.0,
+                    0.0
+                ]
+            },
+            "properties": {
+                "name": "ESTANTERIA_4",
+                "description": "Lower corridor - Middle"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": "node_6",
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    10.0,
+                    0.0
+                ]
+            },
+            "properties": {
+                "name": "ESTANTERIA_5",
+                "description": "Lower corridor - End"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": "edge_1_2",
+            "geometry": {
+                "type": "LineString",
+                "coordinates": [
+                    [
+                        0.0,
+                        5.0
+                    ],
+                    [
+                        5.0,
+                        5.0
+                    ]
+                ]
+            },
+            "properties": {
+                "from": "node_1",
+                "to": "node_2",
+                "weight": 1.0,
+                "direction": "forward_only",
+                "description": "ONE-WAY: Upper corridor A1 -> A2"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": "edge_2_3",
+            "geometry": {
+                "type": "LineString",
+                "coordinates": [
+                    [
+                        5.0,
+                        5.0
+                    ],
+                    [
+                        10.0,
+                        5.0
+                    ]
+                ]
+            },
+            "properties": {
+                "from": "node_2",
+                "to": "node_3",
+                "weight": 1.0,
+                "direction": "forward_only",
+                "description": "ONE-WAY: Upper corridor A2 -> A3"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": "edge_4_5",
+            "geometry": {
+                "type": "LineString",
+                "coordinates": [
+                    [
+                        0.0,
+                        0.0
+                    ],
+                    [
+                        5.0,
+                        0.0
+                    ]
+                ]
+            },
+            "properties": {
+                "from": "node_4",
+                "to": "node_5",
+                "weight": 1.0,
+                "direction": "bidirectional",
+                "description": "Lower corridor B1-B2"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": "edge_5_6",
+            "geometry": {
+                "type": "LineString",
+                "coordinates": [
+                    [
+                        5.0,
+                        0.0
+                    ],
+                    [
+                        10.0,
+                        0.0
+                    ]
+                ]
+            },
+            "properties": {
+                "from": "node_5",
+                "to": "node_6",
+                "weight": 1.0,
+                "direction": "bidirectional",
+                "description": "Lower corridor B2-B3"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": "edge_1_4",
+            "geometry": {
+                "type": "LineString",
+                "coordinates": [
+                    [
+                        0.0,
+                        5.0
+                    ],
+                    [
+                        0.0,
+                        0.0
+                    ]
+                ]
+            },
+            "properties": {
+                "from": "node_1",
+                "to": "node_4",
+                "weight": 1.0,
+                "direction": "bidirectional",
+                "description": "Vertical connector A1-B1"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": "edge_2_5",
+            "geometry": {
+                "type": "LineString",
+                "coordinates": [
+                    [
+                        5.0,
+                        5.0
+                    ],
+                    [
+                        5.0,
+                        0.0
+                    ]
+                ]
+            },
+            "properties": {
+                "from": "node_2",
+                "to": "node_5",
+                "weight": 1.0,
+                "direction": "bidirectional",
+                "description": "Vertical connector A2-B2"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": "edge_3_6",
+            "geometry": {
+                "type": "LineString",
+                "coordinates": [
+                    [
+                        10.0,
+                        5.0
+                    ],
+                    [
+                        10.0,
+                        0.0
+                    ]
+                ]
+            },
+            "properties": {
+                "from": "node_3",
+                "to": "node_6",
+                "weight": 1.0,
+                "direction": "bidirectional",
+                "description": "Vertical connector A3-B3"
+            }
+        }
+    ]
+}

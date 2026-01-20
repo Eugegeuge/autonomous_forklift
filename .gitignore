@@ -7,3 +7,8 @@ __pycache__/
 .vscode/
 .idea/
 *.swp
+*.zip
+temp_graph_editor/
+external_repo/
+*.pdf
+*.gv

@@ -1,0 +1,27 @@
+material ArucoMarker/ID0
+{
+  technique
+  {
+    pass
+    {
+      texture_unit
+      {
+        texture aruco_texture_id0.png
+      }
+    }
+  }
+}
+
+material ArucoMarker/ID26
+{
+  technique
+  {
+    pass
+    {
+      texture_unit
+      {
+        texture /home/eugegeuge/Documents/autonomous_forklift/src/autonomous_forklift/models/aruco_marker/materials/textures/aruco_texture_id26.png
+      }
+    }
+  }
+}

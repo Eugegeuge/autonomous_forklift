@@ -1,0 +1,41 @@
+<mvsim_world version="1.0">
+    <simul_timestep>0</simul_timestep>
+
+    <gui>
+        <ortho>false</ortho>
+        <show_forces>false</show_forces>
+        <cam_distance>15</cam_distance>
+        <fov_deg>60</fov_deg>
+        <refresh_fps>20</refresh_fps>
+    </gui>
+
+    <!-- Ground Grid -->
+    <element class="ground_grid">
+        <floating>true</floating>
+        <x_min>-10</x_min> <x_max>10</x_max>
+        <y_min>-10</y_min> <y_max>10</y_max>
+    </element>
+
+    <!-- Include our custom forklift vehicle class -->
+    <include file="$(ros2 pkg prefix smart_warehouse)/share/smart_warehouse/mvsim_models/forklift_camera.vehicle.xml" />
+
+    <!-- Forklift Robot Instance -->
+    <vehicle name="forklift" class="forklift_camera">
+        <init_pose>0 0 0</init_pose>
+        <init_vel>0 0 0</init_vel>
+
+        <!-- Lidar at front of robot, elevated -->
+        <include file="$(ros2 pkg prefix mvsim)/share/mvsim/definitions/lidar2d.sensor.xml" 
+                 sensor_x="0.5" sensor_z="0.6" sensor_yaw="0" 
+                 max_range="10.0" sensor_name="laser1" />
+
+        <!-- Camera at front, HIGH position for ArUco detection -->
+        <sensor class="camera" name="camera">
+            <pose>0.5 0 0.9 0 0 0</pose>
+            <resolution>640 480</resolution>
+            <fov>60</fov>
+            <period>0.1</period>
+        </sensor>
+    </vehicle>
+
+</mvsim_world>

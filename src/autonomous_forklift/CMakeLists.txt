@@ -33,8 +33,30 @@ install(TARGETS
 
 install(DIRECTORY
   launch
+  mvsim
   mvsim_models
+  urdf
+  config
+  models
+  worlds
+  rviz
   DESTINATION share/${PROJECT_NAME}
+)
+
+# Install Python scripts
+install(PROGRAMS
+  scripts/graph_visualizer.py
+  scripts/test_path_planning.py
+  scripts/waypoint_follower.py
+  scripts/map_builder.py
+  scripts/interface_node.py
+  scripts/graph_editor.py
+  DESTINATION lib/${PROJECT_NAME}
+)
+
+install(DIRECTORY
+  scripts/templates
+  DESTINATION lib/${PROJECT_NAME}
 )
 
 ament_package()

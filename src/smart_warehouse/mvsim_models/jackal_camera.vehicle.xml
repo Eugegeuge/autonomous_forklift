@@ -1,0 +1,82 @@
+<vehicle:class name="jackal_camera">
+
+	<!--  Chassis -->
+	<chassis>
+		<mass>20.0</mass>
+		<inertia>10.0</inertia>
+		<visual>
+			<mesh file="$(ros2 pkg prefix mvsim)/share/mvsim/definitions/meshes/jackal/chassis.dae" scale="1.0" />
+		</visual>
+		<shape>
+			<box size="0.42 0.31 0.18" />
+		</shape>
+	</chassis>
+
+	<!--  Wheels -->
+	<wheels>
+		<wheel>
+			<pos> 0.131  0.18778 0.049</pos>
+			<mass>2.0</mass>
+			<radius>0.049</radius>
+			<width>0.04</width>
+			<visual>
+				<mesh file="$(ros2 pkg prefix mvsim)/share/mvsim/definitions/meshes/jackal/wheel.dae" scale="1.0" />
+			</visual>
+		</wheel>
+		<wheel>
+			<pos>-0.131  0.18778 0.049</pos>
+			<mass>2.0</mass>
+			<radius>0.049</radius>
+			<width>0.04</width>
+			<visual>
+				<mesh file="$(ros2 pkg prefix mvsim)/share/mvsim/definitions/meshes/jackal/wheel.dae" scale="1.0" />
+			</visual>
+		</wheel>
+		<wheel>
+			<pos> 0.131 -0.18778 0.049</pos>
+			<mass>2.0</mass>
+			<radius>0.049</radius>
+			<width>0.04</width>
+			<visual>
+				<mesh file="$(ros2 pkg prefix mvsim)/share/mvsim/definitions/meshes/jackal/wheel.dae" scale="1.0" />
+			</visual>
+		</wheel>
+		<wheel>
+			<pos>-0.131 -0.18778 0.049</pos>
+			<mass>2.0</mass>
+			<radius>0.049</radius>
+			<width>0.04</width>
+			<visual>
+				<mesh file="$(ros2 pkg prefix mvsim)/share/mvsim/definitions/meshes/jackal/wheel.dae" scale="1.0" />
+			</visual>
+		</wheel>
+	</wheels>
+
+	<!--  Dynamics -->
+	<dynamics class="differential">
+		<l_wheel>0</l_wheel>
+		<l_wheel>1</l_wheel>
+		<r_wheel>2</r_wheel>
+		<r_wheel>3</r_wheel>
+	</dynamics>
+
+	<!-- Sensors -->
+	<sensors>
+		<sensor class="laser" name="laser1">
+			<pose>0.012 0 0.33  0 0 0</pose>
+			<fov_deg>270</fov_deg>
+			<nrays>271</nrays>
+			<range_max>10.0</range_max>
+			<period>0.1</period>
+		</sensor>
+        
+        <!-- Camera for ArUco -->
+        <sensor class="camera" name="camera">
+            <pose>0.2 0 0.3 0 0 0</pose>
+            <resolution>640 480</resolution>
+            <fov>60</fov>
+            <period>0.1</period>
+        </sensor>
+	</sensors>
+
+</vehicle:class>

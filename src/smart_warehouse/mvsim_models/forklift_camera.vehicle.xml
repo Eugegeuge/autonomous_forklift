@@ -1,0 +1,35 @@
+<!--
+  Forklift vehicle class definition for MVSim.
+  Uses differential drive dynamics with correct MVSim syntax.
+-->
+<vehicle:class name="forklift_camera">
+
+    <!--  Dynamical model -->
+    <dynamics class="differential">
+        <!-- Params: wheels INSIDE dynamics block (required by MVSim) -->
+        <l_wheel pos="0.3 0.35" mass="4.0" width="0.10" diameter="0.30" />
+        <r_wheel pos="0.3 -0.35" mass="4.0" width="0.10" diameter="0.30" />
+        <chassis mass="100.0" zmin="0.15" zmax="0.8">
+        </chassis>
+
+        <!--   Motor controller -->
+        <controller class="twist_pid">
+            <KP>10</KP>  <KI>5</KI> <I_MAX>2</I_MAX> <KD>0</KD>
+            <V>0.0</V><W>0</W>
+            <max_torque>200</max_torque>
+        </controller>
+
+    </dynamics>
+
+    <!-- Friction force simulation -->
+    <friction class="default">
+        <mu>0.8</mu>
+        <C_damping>0.5</C_damping>
+    </friction>
+
+    <!--  Custom visualization: Orange box for forklift body -->
+    <visual>
+        <model_offset_z>0.4</model_offset_z>
+    </visual>
+
+</vehicle:class>
