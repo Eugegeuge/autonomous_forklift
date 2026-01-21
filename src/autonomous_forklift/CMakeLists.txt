@@ -40,6 +40,7 @@ install(DIRECTORY
   models
   worlds
   rviz
+  maps
   DESTINATION share/${PROJECT_NAME}
 )
 
