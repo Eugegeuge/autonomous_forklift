@@ -51,6 +51,7 @@ install(PROGRAMS
   scripts/map_builder.py
   scripts/interface_node.py
   scripts/graph_editor.py
+  scripts/lift_controller.py
   DESTINATION lib/${PROJECT_NAME}
 )
 
