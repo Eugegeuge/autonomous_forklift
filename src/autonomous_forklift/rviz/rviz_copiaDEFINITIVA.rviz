@@ -143,7 +143,7 @@ Visualization Manager:
         Durability Policy: Volatile
         History Policy: Keep Last
         Reliability Policy: Reliable
-        Value: /waypoint_markers
+        Value: /route_graph_markers
       Name: Graph Markers
       Namespaces:
         {}

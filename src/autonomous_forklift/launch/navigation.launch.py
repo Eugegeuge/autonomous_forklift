@@ -44,8 +44,17 @@ def generate_launch_description():
         output='screen'
     )
 
+    # 4. Graph Visualizer
+    graph_viz_node = Node(
+        package='autonomous_forklift',
+        executable='graph_visualizer.py',
+        name='graph_visualizer',
+        output='screen'
+    )
+
     return LaunchDescription([
         simulation,
         nav2_bringup,
-        rviz_node
+        rviz_node,
+        graph_viz_node
     ])
