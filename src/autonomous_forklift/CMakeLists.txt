@@ -53,6 +53,7 @@ install(PROGRAMS
   scripts/interface_node.py
   scripts/graph_editor.py
   scripts/lift_controller.py
+  scripts/save_map.py
   DESTINATION lib/${PROJECT_NAME}
 )
 
