@@ -22,6 +22,9 @@ import tf_transformations
 
 from rclpy.qos import qos_profile_sensor_data
 
+from tf2_ros import Buffer, TransformListener
+from tf2_ros import LookupException, ConnectivityException, ExtrapolationException
+
 class NavigationNode(Node):
     def __init__(self):
         super().__init__('navigation_node')
@@ -38,6 +41,10 @@ class NavigationNode(Node):
         self.angular_speed = self.get_parameter('angular_speed').get_parameter_value().double_value
         self.distance_tolerance = self.get_parameter('distance_tolerance').get_parameter_value().double_value
         self.angle_tolerance = self.get_parameter('angle_tolerance').get_parameter_value().double_value
+        
+        # TF Buffer for Localization (Map Frame)
+        self.tf_buffer = Buffer()
+        self.tf_listener = TransformListener(self.tf_buffer, self)
         
         # Default graph file
         if not graph_file:
@@ -90,40 +97,21 @@ class NavigationNode(Node):
         self.nav_enabled = True # Default to True for testing
         self.get_logger().info('Navigation Node initialized. Waiting for commands...')
 
-    def publish_status(self, status):
-        msg = String()
-        msg.data = status
-        self.pub_nav_status.publish(msg)
-
     def nav_callback(self, msg):
-        self.get_logger().info(f'RECV [navegacion]: {msg.data}')
-        if msg.data == "STATUS: OFF":
-            self.nav_enabled = False
-            self.state = 'IDLE'
-            self.stop_robot()
-            self.publish_status("STOPPED")
-            self.get_logger().info('Navigation STOPPED by Interface.')
-        elif msg.data == "STATUS: ON":
+        command = msg.data
+        self.get_logger().info(f'Received command: {command}')
+        if command == 'ON':
             self.nav_enabled = True
-            if self.state == 'IDLE' and self.active_goal:
-                self.get_logger().info('Navigation ON and Goal present. Executing.')
-                self.plan_path(self.active_goal)
-            else:
-                self.get_logger().info('Navigation ON but waiting for Goal...')
+        elif command == 'OFF':
+            self.nav_enabled = False
+            self.stop_robot()
+            self.state = 'IDLE'
 
     def goal_callback(self, msg):
-        self.active_goal = msg.data
-        self.get_logger().info(f'Received Navigation Goal: {self.active_goal}')
-        
-        target_node_id = self.location_map.get(self.active_goal)
-        if target_node_id:
-            target_coords = self.nodes[target_node_id]
-            self.get_logger().info(f"Target Node: {target_node_id} at ({target_coords['x']:.2f}, {target_coords['y']:.2f})")
-        
-        # Allow replanning in any state if navigation is enabled (Preemption)
-        if self.nav_enabled:
-             self.get_logger().info('Goal received and Navigation is ON. Executing (Preempting if moving).')
-             self.plan_path(self.active_goal)
+        goal_name = msg.data
+        self.get_logger().info(f'Received goal: {goal_name}')
+        self.active_goal = goal_name
+        self.plan_path(goal_name)
 
     def load_graph(self, filepath):
         try:
@@ -297,6 +285,11 @@ class NavigationNode(Node):
     def stop_robot(self):
         self.cmd_vel_pub.publish(Twist())
 
+    def publish_status(self, status):
+        msg = String()
+        msg.data = status
+        self.pub_nav_status.publish(msg)
+
     def normalize_angle(self, angle):
         while angle > math.pi: angle -= 2 * math.pi
         while angle < -math.pi: angle += 2 * math.pi
@@ -321,6 +314,7 @@ class NavigationNode(Node):
         self.marker_pub.publish(marker_array)
 
 def main(args=None):
+    print("🚀 STARTING WAYPOINT FOLLOWER NODE...", flush=True)
     rclpy.init(args=args)
     node = NavigationNode()
     try:

@@ -3,40 +3,12 @@
   "features": [
     {
       "type": "Feature",
-      "id": "node_1",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
-          -3.2316132495578747,
-          7.465167724961204
-        ]
-      },
-      "properties": {
-        "name": "ESTANTERIA_1"
-      }
-    },
-    {
-      "type": "Feature",
-      "id": "node_3",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
-          12.827670060472089,
-          5.602403755783739
-        ]
-      },
-      "properties": {
-        "name": "ESTANTERIA_3"
-      }
-    },
-    {
-      "type": "Feature",
       "id": "node_4",
       "geometry": {
         "type": "Point",
         "coordinates": [
-          -3.3445080355686305,
-          -1.2841781908723433
+          0.029663246477666813,
+          0.004237606639666687
         ]
       },
       "properties": {
@@ -45,54 +17,68 @@
     },
     {
       "type": "Feature",
-      "id": "node_5",
+      "id": "node_2_1769025447604",
       "geometry": {
         "type": "Point",
         "coordinates": [
-          3.59852130409283,
-          -8.227207530533803
+          0.034205864176979295,
+          -2.297055340500225
         ]
       },
       "properties": {
-        "name": "ESTANTERIA_4"
+        "name": "ESTANTERIA_1"
       }
     },
     {
       "type": "Feature",
-      "id": "node_6",
+      "id": "node_3_1769025467372",
       "geometry": {
         "type": "Point",
         "coordinates": [
-          14.52109185063342,
-          -1.4535203698884764
+          -12.1158153420841,
+          0.014338243008383548
         ]
       },
       "properties": {
-        "name": "ESTANTERIA_5"
+        "name": "N1"
       }
     },
     {
       "type": "Feature",
-      "id": "node_6_1768933390547",
+      "id": "node_4_1769025576403",
       "geometry": {
         "type": "Point",
         "coordinates": [
-          4.875,
-          7.575
+          -12.205396233312612,
+          6.784958121987967
         ]
       },
       "properties": {
-        "name": "N6"
+        "name": "N4"
       }
     },
     {
       "type": "Feature",
-      "id": "node_7_1768933391051",
+      "id": "node_5_1769025579628",
       "geometry": {
         "type": "Point",
         "coordinates": [
-          5.175,
-          13.875
+          -0.009410482832160841,
+          10.699718980166876
+        ]
+      },
+      "properties": {
+        "name": "N5"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "node_6_1769025587452",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -14.106313765409102,
+          7.537796748560834
         ]
       },
       "properties": {
@@ -101,155 +87,479 @@
     },
     {
       "type": "Feature",
-      "id": "edge_4_5",
+      "id": "node_7_1769025601980",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -0.009410482832160841,
+          7.518975782896512
+        ]
+      },
+      "properties": {
+        "name": "ESTANTERIA_3"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "node_8_1769025637901",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          9.909238422265366,
+          7.067272606952792
+        ]
+      },
+      "properties": {
+        "name": "N8"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "node_9_1769025642732",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          9.137578830028177,
+          0.04705241416080421
+        ]
+      },
+      "properties": {
+        "name": "ESTANTERIA_4"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "node_10_1769025664057",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          9.890417456601044,
+          2.606703744508553
+        ]
+      },
+      "properties": {
+        "name": "N10"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "node_11_1769025679712",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          6.427359774365855,
+          0.009410482832160841
+        ]
+      },
+      "properties": {
+        "name": "N11"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "node_12_1769025707084",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -12.09120107835938,
+          -8.218574398457799
+        ]
+      },
+      "properties": {
+        "name": "N12"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "node_13_1769025710141",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -0.04302918533223978,
+          -10.915070012611492
+        ]
+      },
+      "properties": {
+        "name": "ESTANTERIA_5"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "node_14_1769025726196",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          9.911055688192564,
+          -3.083758282143851
+        ]
+      },
+      "properties": {
+        "name": "N14"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "node_15_1769025728204",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          9.911055688192564,
+          -8.964413610883287
+        ]
+      },
+      "properties": {
+        "name": "N15"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "edge_node_4_node_2_1769025447604",
       "geometry": {
         "type": "LineString",
         "coordinates": [
           [
-            -3.3445080355686305,
-            -1.2841781908723433
+            0.029663246477666813,
+            0.004237606639666687
           ],
           [
-            3.59852130409283,
-            -8.227207530533803
+            0.034205864176979295,
+            -2.297055340500225
           ]
         ]
       },
       "properties": {
         "from": "node_4",
-        "to": "node_5",
+        "to": "node_2_1769025447604",
         "weight": 1
       }
     },
     {
       "type": "Feature",
-      "id": "edge_5_6",
+      "id": "edge_node_3_1769025467372_node_4",
       "geometry": {
         "type": "LineString",
         "coordinates": [
           [
-            3.59852130409283,
-            -8.227207530533803
+            -12.1158153420841,
+            0.014338243008383548
           ],
           [
-            14.52109185063342,
-            -1.4535203698884764
+            0.029663246477666813,
+            0.004237606639666687
           ]
         ]
       },
       "properties": {
-        "from": "node_5",
-        "to": "node_6",
-        "weight": 1
-      }
-    },
-    {
-      "type": "Feature",
-      "id": "edge_1_4",
-      "geometry": {
-        "type": "LineString",
-        "coordinates": [
-          [
-            -3.2316132495578747,
-            7.465167724961204
-          ],
-          [
-            -3.3445080355686305,
-            -1.2841781908723433
-          ]
-        ]
-      },
-      "properties": {
-        "from": "node_1",
+        "from": "node_3_1769025467372",
         "to": "node_4",
         "weight": 1
       }
     },
     {
       "type": "Feature",
-      "id": "edge_3_6",
+      "id": "edge_node_6_1769025587452_node_4_1769025576403",
       "geometry": {
         "type": "LineString",
         "coordinates": [
           [
-            12.827670060472089,
-            5.602403755783739
+            -14.106313765409102,
+            7.537796748560834
           ],
           [
-            14.52109185063342,
-            -1.4535203698884764
+            -12.205396233312612,
+            6.784958121987967
           ]
         ]
       },
       "properties": {
-        "from": "node_3",
-        "to": "node_6",
+        "from": "node_6_1769025587452",
+        "to": "node_4_1769025576403",
         "weight": 1
       }
     },
     {
       "type": "Feature",
-      "id": "edge_node_6_1768933390547_node_7_1768933391051",
+      "id": "edge_node_4_1769025576403_node_3_1769025467372",
       "geometry": {
         "type": "LineString",
         "coordinates": [
           [
-            4.875,
-            7.575
+            -12.205396233312612,
+            6.784958121987967
           ],
           [
-            5.175,
-            13.875
+            -12.1158153420841,
+            0.014338243008383548
           ]
         ]
       },
       "properties": {
-        "from": "node_6_1768933390547",
-        "to": "node_7_1768933391051",
+        "from": "node_4_1769025576403",
+        "to": "node_3_1769025467372",
         "weight": 1
       }
     },
     {
       "type": "Feature",
-      "id": "edge_node_3_node_6_1768933390547",
+      "id": "edge_node_4_1769025576403_node_5_1769025579628",
       "geometry": {
         "type": "LineString",
         "coordinates": [
           [
-            12.827670060472089,
-            5.602403755783739
+            -12.205396233312612,
+            6.784958121987967
           ],
           [
-            4.875,
-            7.575
+            -0.009410482832160841,
+            10.699718980166876
           ]
         ]
       },
       "properties": {
-        "from": "node_3",
-        "to": "node_6_1768933390547",
+        "from": "node_4_1769025576403",
+        "to": "node_5_1769025579628",
         "weight": 1
       }
     },
     {
       "type": "Feature",
-      "id": "edge_node_6_1768933390547_node_1",
+      "id": "edge_node_7_1769025601980_node_5_1769025579628",
       "geometry": {
         "type": "LineString",
         "coordinates": [
           [
-            4.875,
-            7.575
+            -0.009410482832160841,
+            7.518975782896512
           ],
           [
-            -3.2316132495578747,
-            7.465167724961204
+            -0.009410482832160841,
+            10.699718980166876
           ]
         ]
       },
       "properties": {
-        "from": "node_6_1768933390547",
-        "to": "node_1",
+        "from": "node_7_1769025601980",
+        "to": "node_5_1769025579628",
+        "weight": 1
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "edge_node_5_1769025579628_node_8_1769025637901",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            -0.009410482832160841,
+            10.699718980166876
+          ],
+          [
+            9.909238422265366,
+            7.067272606952792
+          ]
+        ]
+      },
+      "properties": {
+        "from": "node_5_1769025579628",
+        "to": "node_8_1769025637901",
+        "weight": 1
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "edge_node_9_1769025642732_node_11_1769025679712",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            9.137578830028177,
+            0.04705241416080421
+          ],
+          [
+            6.427359774365855,
+            0.009410482832160841
+          ]
+        ]
+      },
+      "properties": {
+        "from": "node_9_1769025642732",
+        "to": "node_11_1769025679712",
+        "weight": 1
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "edge_node_4_node_11_1769025679712",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            0.029663246477666813,
+            0.004237606639666687
+          ],
+          [
+            6.427359774365855,
+            0.009410482832160841
+          ]
+        ]
+      },
+      "properties": {
+        "from": "node_4",
+        "to": "node_11_1769025679712",
+        "weight": 1
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "edge_node_10_1769025664057_node_11_1769025679712",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            9.890417456601044,
+            2.606703744508553
+          ],
+          [
+            6.427359774365855,
+            0.009410482832160841
+          ]
+        ]
+      },
+      "properties": {
+        "from": "node_10_1769025664057",
+        "to": "node_11_1769025679712",
+        "weight": 1
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "edge_node_10_1769025664057_node_8_1769025637901",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            9.890417456601044,
+            2.606703744508553
+          ],
+          [
+            9.909238422265366,
+            7.067272606952792
+          ]
+        ]
+      },
+      "properties": {
+        "from": "node_10_1769025664057",
+        "to": "node_8_1769025637901",
+        "weight": 1
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "edge_node_12_1769025707084_node_3_1769025467372",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            -12.09120107835938,
+            -8.218574398457799
+          ],
+          [
+            -12.1158153420841,
+            0.014338243008383548
+          ]
+        ]
+      },
+      "properties": {
+        "from": "node_12_1769025707084",
+        "to": "node_3_1769025467372",
+        "weight": 1
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "edge_node_13_1769025710141_node_12_1769025707084",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            -0.04302918533223978,
+            -10.915070012611492
+          ],
+          [
+            -12.09120107835938,
+            -8.218574398457799
+          ]
+        ]
+      },
+      "properties": {
+        "from": "node_13_1769025710141",
+        "to": "node_12_1769025707084",
+        "weight": 1
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "edge_node_13_1769025710141_node_15_1769025728204",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            -0.04302918533223978,
+            -10.915070012611492
+          ],
+          [
+            9.911055688192564,
+            -8.964413610883287
+          ]
+        ]
+      },
+      "properties": {
+        "from": "node_13_1769025710141",
+        "to": "node_15_1769025728204",
+        "weight": 1
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "edge_node_15_1769025728204_node_14_1769025726196",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            9.911055688192564,
+            -8.964413610883287
+          ],
+          [
+            9.911055688192564,
+            -3.083758282143851
+          ]
+        ]
+      },
+      "properties": {
+        "from": "node_15_1769025728204",
+        "to": "node_14_1769025726196",
+        "weight": 1
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "edge_node_14_1769025726196_node_11_1769025679712",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            9.911055688192564,
+            -3.083758282143851
+          ],
+          [
+            6.427359774365855,
+            0.009410482832160841
+          ]
+        ]
+      },
+      "properties": {
+        "from": "node_14_1769025726196",
+        "to": "node_11_1769025679712",
         "weight": 1
       }
     }

@@ -42,5 +42,5 @@ def generate_launch_description():
     return LaunchDescription([
         world_file_arg,
         mvsim_node,
-        rviz_node
+        # rviz_node
     ])
