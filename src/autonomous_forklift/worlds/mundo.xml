@@ -177,10 +177,18 @@
 			<publish_topic>/rear_scan</publish_topic>
 		</sensor>
 
-		<!-- IMU -->
 		<sensor class="imu" name="imu">
 			<pose_3d>0 0 0.3 0 0 0</pose_3d>
 			<sensor_period>0.02</sensor_period>
+		</sensor>
+
+		<!-- Cámara baja (para ver pallets) -->
+		<sensor class="camera" name="camera_low">
+			<pose>1.3 0 0.5 0 180 0</pose>
+			<resolution>640 480</resolution>
+			<fov_degrees>90</fov_degrees>
+			<sensor_period>0.1</sensor_period>
+			<publish_topic>/camera_low/image_raw</publish_topic>
 		</sensor>
 	</vehicle:class>
 
@@ -303,7 +311,7 @@
 	<block class="shelf"> <init_pose>0 -5 0</init_pose> </block>
 
 
-	<block class="shelf"> <init_pose>12 0 90</init_pose> </block>
+	<block class="shelf"> <init_pose>16 0 90</init_pose> </block>
 
 
 	<block class="pallet_jack"> <init_pose>3 3 0</init_pose> </block>
@@ -325,9 +333,9 @@
 	<block class="tote"> <init_pose>-2 3 -40</init_pose> </block>
 	<block class="tote"> <init_pose> 2 3 10</init_pose> </block>
 
-	<block class="pallet" name="pallet_1"> <init_pose>0 5 0</init_pose> </block>
-	<block class="pallet" name="pallet_2"> <init_pose>0 -5 0</init_pose> </block>
-	<block class="pallet" name="pallet_3"> <init_pose>12 0 90</init_pose> </block>
+	<block class="pallet" name="pallet_1"> <init_pose>0 3.0 0</init_pose> </block>
+	<block class="pallet" name="pallet_2"> <init_pose>0 -3.0 0</init_pose> </block>
+	<block class="pallet" name="pallet_3"> <init_pose>14.0 0 90</init_pose> </block>
 	<block class="pallet" name="pallet_4"> <init_pose>-14 9 0</init_pose> </block>
 	<block class="pallet" name="pallet_5"> <init_pose>0 -9 180</init_pose> </block>
 
