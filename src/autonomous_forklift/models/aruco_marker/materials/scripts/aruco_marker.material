@@ -20,7 +20,7 @@ material ArucoMarker/ID26
     {
       texture_unit
       {
-        texture /home/eugegeuge/Documents/autonomous_forklift/src/autonomous_forklift/models/aruco_marker/materials/textures/aruco_texture_id26.png
+        texture ../textures/aruco_texture_id26.png
       }
     }
   }

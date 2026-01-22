@@ -35,8 +35,15 @@ DEFAULT_GRAPH_FILE = os.path.join(CONFIG_DIR, 'warehouse_graph.geojson')
 TEMPLATE_DIR = os.path.join(SCRIPT_DIR, 'templates')
 
 # Default Map
-MVSIM_MODELS_DIR = os.path.join(PKG_DIR, 'mvsim_models')
-DEFAULT_MAP_FILE = os.path.join(MVSIM_MODELS_DIR, 'warehouse.yaml')
+# MVSim Models Dir is not used for this map, it is in the root
+import os
+from ament_index_python.packages import get_package_share_directory
+
+try:
+    pkg_path = get_package_share_directory('autonomous_forklift')
+    DEFAULT_MAP_FILE = os.path.join(pkg_path, 'maps', 'mundo_map.yaml')
+except:
+    DEFAULT_MAP_FILE = 'mundo_map.yaml' # Fallback
 
 # Globals to be set by main
 GRAPH_FILE = DEFAULT_GRAPH_FILE

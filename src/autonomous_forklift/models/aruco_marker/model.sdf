@@ -15,7 +15,7 @@
           <specular>0 0 0 1</specular>
           <pbr>
             <metal>
-              <albedo_map>file:///home/eugegeuge/Documents/autonomous_forklift/src/autonomous_forklift/models/aruco_marker/materials/textures/aruco_texture_id26.png</albedo_map>
+              <albedo_map>materials/textures/aruco_texture_id26.png</albedo_map>
               <roughness>0.6</roughness>
               <metalness>0.1</metalness>
             </metal>
