@@ -98,7 +98,7 @@
 	<!-- =============================
 		   Vehicle classes definition
 	     ============================= -->
-	<include file="../definitions/jackal.vehicle.xml"
+	<include file="forklift.vehicle.xml"
 		default_sensors="true"
 		lidar2d_raytrace="true"
 	/>  <!-- lidar2d_raytrace: Use accurate 3D raytrace mode for the 2D lidar sensor too -->
@@ -106,7 +106,7 @@
 	<!-- ========================
 		   Vehicle(s) definition
 	     ======================== -->
-	<vehicle name="r1" class="jackal">
+	<vehicle name="r1" class="forklift">
 		<init_pose>0 0 0</init_pose>  <!-- In global coords: x,y, yaw(deg) -->
 	</vehicle>
 
