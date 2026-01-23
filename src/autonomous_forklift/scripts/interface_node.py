@@ -255,14 +255,18 @@ class ControlPanel:
         """Executes a blind movement (open loop) for a duration"""
         if not self.is_active: return
         
-        # Start moving
-        self.ros_node.publish_cmd_vel(speed, 0.0)
+        import time as time_module
+        end_time = time_module.time() + duration_ms / 1000.0
         
-        # Schedule stop
-        self.root.after(duration_ms, lambda: self.ros_node.publish_cmd_vel(0.0, 0.0))
+        def keep_publishing():
+            if time_module.time() < end_time and self.is_active:
+                self.ros_node.publish_cmd_vel(speed, 0.0)
+                self.root.after(100, keep_publishing)  # Publish every 100ms
+            else:
+                self.ros_node.publish_cmd_vel(0.0, 0.0)  # Stop
+                self.root.after(next_phase_delay_ms, self.advance_phase)
         
-        # Schedule next phase
-        self.root.after(duration_ms + next_phase_delay_ms, self.advance_phase)
+        keep_publishing()
 
     def execute_phase(self):
         if not self.is_active: return
@@ -279,8 +283,8 @@ class ControlPanel:
             self.lbl_current_state.config(text="APROXIMANDO...", fg="#a855f7")
             self.publicar_mensaje("estado", "FASE 2: Aproximación Ciega")
             self.publicar_mensaje("navegacion", "STATUS: OFF") # Ensure Nav is OFF
-            # Move forward 0.5 m/s for 5 seconds (~2.5m)
-            self.perform_blind_move(0.5, 5000)
+            # Move forward 0.5 m/s for 3 seconds (~1.5m)
+            self.perform_blind_move(0.5, 1500)
             
         elif self.mission_phase == 3:
             # Phase 3: Pick
@@ -294,8 +298,8 @@ class ControlPanel:
             # Phase 4: Reverse Origin (Blind)
             self.lbl_current_state.config(text="RETROCEDIENDO...", fg="#a855f7")
             self.publicar_mensaje("estado", "FASE 4: Marcha Atrás")
-            # Move backward -0.5 m/s for 5 seconds
-            self.perform_blind_move(-0.5, 5000)
+            # Move backward -0.5 m/s for 4 seconds (~2m)
+            self.perform_blind_move(-0.5, 1500)
             
         elif self.mission_phase == 5:
             # Phase 5: Navigate to Target
@@ -310,8 +314,8 @@ class ControlPanel:
             self.lbl_current_state.config(text="APROXIMANDO...", fg="#a855f7")
             self.publicar_mensaje("estado", "FASE 6: Aproximación Ciega")
             self.publicar_mensaje("navegacion", "STATUS: OFF")
-            # Move forward 0.5 m/s for 5 seconds
-            self.perform_blind_move(0.5, 5000)
+            # Move forward 0.5 m/s for 3 seconds (~1.5m)
+            self.perform_blind_move(0.5, 1500)
             
         elif self.mission_phase == 7:
             # Phase 7: Drop
@@ -325,8 +329,8 @@ class ControlPanel:
             # Phase 8: Reverse Target (Blind)
             self.lbl_current_state.config(text="RETROCEDIENDO...", fg="#a855f7")
             self.publicar_mensaje("estado", "FASE 8: Marcha Atrás")
-            # Move backward -0.5 m/s for 5 seconds
-            self.perform_blind_move(-0.5, 5000)
+            # Move backward -0.5 m/s for 4 seconds (~2m)
+            self.perform_blind_move(-0.5, 2500)
             
         elif self.mission_phase == 9:
             # Phase 9: Navigate to Home

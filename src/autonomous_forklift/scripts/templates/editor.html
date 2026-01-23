@@ -26,11 +26,12 @@
             display: flex;
             gap: 10px;
             z-index: 100;
+            flex-wrap: wrap;
         }
 
         #properties-panel {
             position: absolute;
-            top: 80px;
+            top: 120px;
             left: 10px;
             background: #333;
             padding: 15px;
@@ -102,10 +103,20 @@
             color: white;
         }
 
+        #btn-ruler {
+            background: #9b59b6;
+            color: white;
+        }
+
         #btn-save {
             background: #ffc107;
             color: black;
             margin-left: 20px;
+        }
+
+        #btn-grid {
+            background: #17a2b8;
+            color: white;
         }
 
         #canvas-container {
@@ -119,25 +130,37 @@
             display: block;
         }
 
-        .node-label {
-            position: absolute;
-            background: rgba(0, 0, 0, 0.7);
-            color: white;
-            padding: 2px 5px;
-            border-radius: 3px;
-            font-size: 12px;
-            pointer-events: none;
-            transform: translate(-50%, -150%);
-        }
-
         #status {
             position: absolute;
             bottom: 10px;
             left: 10px;
-            background: rgba(0, 0, 0, 0.5);
-            padding: 5px 10px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 8px 15px;
             border-radius: 4px;
             font-size: 14px;
+        }
+
+        #coords {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 8px 15px;
+            border-radius: 4px;
+            font-size: 14px;
+            font-family: 'Courier New', monospace;
+        }
+
+        #ruler-info {
+            position: absolute;
+            top: 70px;
+            left: 10px;
+            background: rgba(155, 89, 182, 0.9);
+            padding: 8px 15px;
+            border-radius: 4px;
+            font-size: 14px;
+            display: none;
+            z-index: 100;
         }
     </style>
 </head>
@@ -148,7 +171,9 @@
         <button id="btn-select" onclick="setMode('select')" class="active">Select / Move</button>
         <button id="btn-node" onclick="setMode('node')">Add Node</button>
         <button id="btn-edge" onclick="setMode('edge')">Connect Nodes</button>
+        <button id="btn-ruler" onclick="setMode('ruler')">📏 Ruler</button>
         <button id="btn-delete" onclick="setMode('delete')">Delete</button>
+        <button id="btn-grid" onclick="toggleGrid()">🔲 Grid</button>
         <button id="btn-save" onclick="saveGraph()">💾 Save Graph</button>
     </div>
 
@@ -162,9 +187,19 @@
             <label>Name (e.g. ESTANTERIA_1)</label>
             <input type="text" id="prop-name" oninput="updateNodeProperty('name', this.value)">
         </div>
+        <div class="prop-row">
+            <label>X (meters)</label>
+            <input type="number" id="prop-x" step="0.1" oninput="updateNodeProperty('x', parseFloat(this.value))">
+        </div>
+        <div class="prop-row">
+            <label>Y (meters)</label>
+            <input type="number" id="prop-y" step="0.1" oninput="updateNodeProperty('y', parseFloat(this.value))">
+        </div>
     </div>
 
+    <div id="ruler-info">📏 Distance: <span id="ruler-distance">0.00</span> m</div>
     <div id="status">Ready</div>
+    <div id="coords">X: 0.00 m | Y: 0.00 m</div>
 
     <div id="canvas-container">
         <canvas id="graphCanvas"></canvas>
@@ -177,11 +212,16 @@
         const propPanel = document.getElementById('properties-panel');
         const propId = document.getElementById('prop-id');
         const propName = document.getElementById('prop-name');
+        const propX = document.getElementById('prop-x');
+        const propY = document.getElementById('prop-y');
+        const coordsDisplay = document.getElementById('coords');
+        const rulerInfo = document.getElementById('ruler-info');
+        const rulerDistance = document.getElementById('ruler-distance');
 
         // State
         let nodes = [];
         let edges = [];
-        let mode = 'select'; // select, node, edge, delete
+        let mode = 'select'; // select, node, edge, delete, ruler
         let selectedNode = null;
         let draggingNode = null;
         let edgeStartNode = null;
@@ -189,6 +229,12 @@
         let scale = 20.0; // Pixels per meter (Zoom)
         let isPanning = false;
         let lastMouse = { x: 0, y: 0 };
+        let currentMouse = { x: 0, y: 0 };
+        let showGrid = true;
+
+        // Ruler State
+        let rulerStart = null;
+        let rulerEnd = null;
 
         // Map State
         let mapImage = null;
@@ -196,6 +242,7 @@
 
         // Config
         const NODE_RADIUS = 10;
+        const GRID_SPACING = 1; // 1 meter
 
         // Resize canvas
         function resize() {
@@ -222,12 +269,10 @@
 
         async function loadMap() {
             try {
-                // Get Info
                 const infoRes = await fetch('/api/map/info');
                 mapInfo = await infoRes.json();
 
                 if (mapInfo.image) {
-                    // Load Image
                     const img = new Image();
                     img.src = '/api/map/image';
                     img.onload = () => {
@@ -285,7 +330,6 @@
         function toGeoJSON() {
             const features = [];
 
-            // Nodes
             nodes.forEach(n => {
                 features.push({
                     type: "Feature",
@@ -300,7 +344,6 @@
                 });
             });
 
-            // Edges
             edges.forEach(e => {
                 const n1 = nodes.find(n => n.id === e.from);
                 const n2 = nodes.find(n => n.id === e.to);
@@ -328,14 +371,24 @@
 
         function setMode(m) {
             mode = m;
-            document.querySelectorAll('button').forEach(b => b.classList.remove('active'));
-            document.getElementById(`btn-${m}`).classList.add('active');
+            document.querySelectorAll('#toolbar button').forEach(b => b.classList.remove('active'));
+            const btn = document.getElementById(`btn-${m}`);
+            if (btn) btn.classList.add('active');
 
             selectedNode = null;
             edgeStartNode = null;
             draggingNode = null;
+            rulerStart = null;
+            rulerEnd = null;
+            rulerInfo.style.display = 'none';
             updatePropertiesPanel();
             setStatus(`Mode: ${m.toUpperCase()}`);
+            draw();
+        }
+
+        function toggleGrid() {
+            showGrid = !showGrid;
+            setStatus(`Grid: ${showGrid ? 'ON' : 'OFF'}`);
             draw();
         }
 
@@ -348,6 +401,8 @@
                 propPanel.style.display = 'block';
                 propId.value = selectedNode.id;
                 propName.value = selectedNode.name;
+                propX.value = selectedNode.x.toFixed(2);
+                propY.value = selectedNode.y.toFixed(2);
             } else {
                 propPanel.style.display = 'none';
             }
@@ -364,7 +419,7 @@
         function toWorld(screenX, screenY) {
             return {
                 x: (screenX - canvas.width / 2 - offset.x) / scale,
-                y: -(screenY - canvas.height / 2 - offset.y) / scale // Flip Y for standard map coords
+                y: -(screenY - canvas.height / 2 - offset.y) / scale
             };
         }
 
@@ -376,7 +431,6 @@
         }
 
         function getNodeAt(x, y) {
-            // Check distance in screen pixels
             for (let n of nodes) {
                 const s = toScreen(n.x, n.y);
                 const dx = s.x - x;
@@ -394,7 +448,6 @@
             const clickedNode = getNodeAt(mouse.x, mouse.y);
 
             if (e.button === 1 || (e.button === 0 && e.shiftKey)) {
-                // Middle click or Shift+Click -> Pan
                 isPanning = true;
                 lastMouse = mouse;
                 return;
@@ -406,7 +459,6 @@
                     selectedNode = clickedNode;
                 } else {
                     selectedNode = null;
-                    // Start panning if clicked on empty space
                     isPanning = true;
                     lastMouse = mouse;
                 }
@@ -428,7 +480,6 @@
                         setStatus(`Select second node to connect from ${clickedNode.name}`);
                     } else {
                         if (clickedNode !== edgeStartNode) {
-                            // Check if edge exists
                             const exists = edges.some(e =>
                                 (e.from === edgeStartNode.id && e.to === clickedNode.id) ||
                                 (e.from === clickedNode.id && e.to === edgeStartNode.id)
@@ -448,9 +499,12 @@
                 } else {
                     edgeStartNode = null;
                 }
+            } else if (mode === 'ruler') {
+                rulerStart = world;
+                rulerEnd = world;
+                rulerInfo.style.display = 'block';
             } else if (mode === 'delete') {
                 if (clickedNode) {
-                    // Remove node and connected edges
                     nodes = nodes.filter(n => n !== clickedNode);
                     edges = edges.filter(e => e.from !== clickedNode.id && e.to !== clickedNode.id);
                     setStatus(`Deleted node ${clickedNode.name}`);
@@ -464,6 +518,11 @@
 
         canvas.addEventListener('mousemove', e => {
             const mouse = { x: e.clientX, y: e.clientY };
+            currentMouse = mouse;
+            const world = toWorld(mouse.x, mouse.y);
+
+            // Update coordinates display
+            coordsDisplay.innerText = `X: ${world.x.toFixed(2)} m | Y: ${world.y.toFixed(2)} m`;
 
             if (isPanning) {
                 offset.x += mouse.x - lastMouse.x;
@@ -474,9 +533,16 @@
             }
 
             if (draggingNode) {
-                const world = toWorld(mouse.x, mouse.y);
                 draggingNode.x = world.x;
                 draggingNode.y = world.y;
+                updatePropertiesPanel();
+                draw();
+            }
+
+            if (mode === 'ruler' && rulerStart) {
+                rulerEnd = world;
+                const dist = Math.sqrt(Math.pow(rulerEnd.x - rulerStart.x, 2) + Math.pow(rulerEnd.y - rulerStart.y, 2));
+                rulerDistance.innerText = dist.toFixed(2);
                 draw();
             }
         });
@@ -484,6 +550,9 @@
         canvas.addEventListener('mouseup', () => {
             isPanning = false;
             draggingNode = null;
+            if (mode === 'ruler') {
+                // Keep ruler visible until mode changes
+            }
         });
 
         canvas.addEventListener('wheel', e => {
@@ -499,56 +568,154 @@
 
         // --- Rendering ---
 
+        function drawGrid() {
+            if (!showGrid) return;
+
+            const topLeft = toWorld(0, 0);
+            const bottomRight = toWorld(canvas.width, canvas.height);
+
+            // Determine grid spacing based on zoom
+            let gridSpacing = GRID_SPACING;
+            if (scale < 5) gridSpacing = 10;
+            else if (scale < 10) gridSpacing = 5;
+            else if (scale < 20) gridSpacing = 2;
+            else if (scale > 50) gridSpacing = 0.5;
+
+            // Minor grid
+            ctx.strokeStyle = '#2a2a2a';
+            ctx.lineWidth = 0.5;
+            ctx.beginPath();
+
+            const startX = Math.floor(topLeft.x / gridSpacing) * gridSpacing;
+            const endX = Math.ceil(bottomRight.x / gridSpacing) * gridSpacing;
+            const startY = Math.floor(bottomRight.y / gridSpacing) * gridSpacing;
+            const endY = Math.ceil(topLeft.y / gridSpacing) * gridSpacing;
+
+            for (let x = startX; x <= endX; x += gridSpacing) {
+                const s = toScreen(x, 0);
+                ctx.moveTo(s.x, 0);
+                ctx.lineTo(s.x, canvas.height);
+            }
+
+            for (let y = startY; y <= endY; y += gridSpacing) {
+                const s = toScreen(0, y);
+                ctx.moveTo(0, s.y);
+                ctx.lineTo(canvas.width, s.y);
+            }
+            ctx.stroke();
+
+            // Major grid (every 5 units)
+            ctx.strokeStyle = '#3a3a3a';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+
+            for (let x = startX; x <= endX; x += gridSpacing * 5) {
+                const s = toScreen(x, 0);
+                ctx.moveTo(s.x, 0);
+                ctx.lineTo(s.x, canvas.height);
+            }
+
+            for (let y = startY; y <= endY; y += gridSpacing * 5) {
+                const s = toScreen(0, y);
+                ctx.moveTo(0, s.y);
+                ctx.lineTo(canvas.width, s.y);
+            }
+            ctx.stroke();
+
+            // Draw scale labels
+            ctx.fillStyle = '#666';
+            ctx.font = '10px Arial';
+            ctx.textAlign = 'center';
+
+            for (let x = Math.ceil(startX / (gridSpacing * 5)) * gridSpacing * 5; x <= endX; x += gridSpacing * 5) {
+                const s = toScreen(x, 0);
+                if (s.x > 50 && s.x < canvas.width - 50) {
+                    ctx.fillText(`${x}m`, s.x, canvas.height - 5);
+                }
+            }
+
+            ctx.textAlign = 'left';
+            for (let y = Math.ceil(startY / (gridSpacing * 5)) * gridSpacing * 5; y <= endY; y += gridSpacing * 5) {
+                const s = toScreen(0, y);
+                if (s.y > 20 && s.y < canvas.height - 20) {
+                    ctx.fillText(`${y}m`, 5, s.y + 3);
+                }
+            }
+        }
+
         function draw() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
             const center = toScreen(0, 0);
 
+            // Draw Grid
+            drawGrid();
+
             // Draw Map
             if (mapImage && mapInfo) {
                 const res = mapInfo.resolution;
-                const origin = mapInfo.origin; // [x, y, z]
+                const origin = mapInfo.origin;
 
-                // Map dimensions in world meters
                 const mapW = mapImage.width * res;
                 const mapH = mapImage.height * res;
 
-                // Top-Left corner in World coordinates
-                // Origin is bottom-left of the image
                 const worldX = origin[0];
                 const worldY = origin[1] + mapH;
 
-                // Convert to screen
                 const tl = toScreen(worldX, worldY);
                 const br = toScreen(origin[0] + mapW, origin[1]);
-
-                // Draw
-                // Note: Canvas draws from top-left. 
-                // toScreen flips Y, so tl.y should be smaller than br.y if we are zoomed out normally?
-                // Wait, toScreen(y) = -y * scale. 
-                // If y_top > y_bottom, then screen_y_top < screen_y_bottom. Correct.
 
                 const width = br.x - tl.x;
                 const height = br.y - tl.y;
 
-                ctx.globalAlpha = 0.5; // Semi-transparent
+                ctx.globalAlpha = 0.5;
                 ctx.drawImage(mapImage, tl.x, tl.y, width, height);
                 ctx.globalAlpha = 1.0;
             }
 
-            // Grid
-            ctx.strokeStyle = '#333';
-            ctx.lineWidth = 1;
-            ctx.beginPath();
-
             // Draw axes
-            ctx.strokeStyle = '#555';
+            ctx.strokeStyle = '#ff4444';
+            ctx.lineWidth = 2;
             ctx.beginPath();
-            ctx.moveTo(0, center.y);
-            ctx.lineTo(canvas.width, center.y);
-            ctx.moveTo(center.x, 0);
-            ctx.lineTo(center.x, canvas.height);
+            ctx.moveTo(center.x, center.y);
+            ctx.lineTo(center.x + 50, center.y);
             ctx.stroke();
+
+            ctx.strokeStyle = '#44ff44';
+            ctx.beginPath();
+            ctx.moveTo(center.x, center.y);
+            ctx.lineTo(center.x, center.y - 50);
+            ctx.stroke();
+
+            ctx.fillStyle = '#ff4444';
+            ctx.font = '12px Arial';
+            ctx.fillText('X', center.x + 55, center.y + 4);
+            ctx.fillStyle = '#44ff44';
+            ctx.fillText('Y', center.x + 4, center.y - 55);
+
+            // Draw Ruler
+            if (mode === 'ruler' && rulerStart && rulerEnd) {
+                const s1 = toScreen(rulerStart.x, rulerStart.y);
+                const s2 = toScreen(rulerEnd.x, rulerEnd.y);
+
+                ctx.strokeStyle = '#9b59b6';
+                ctx.lineWidth = 3;
+                ctx.setLineDash([10, 5]);
+                ctx.beginPath();
+                ctx.moveTo(s1.x, s1.y);
+                ctx.lineTo(s2.x, s2.y);
+                ctx.stroke();
+                ctx.setLineDash([]);
+
+                // Draw endpoints
+                ctx.fillStyle = '#9b59b6';
+                ctx.beginPath();
+                ctx.arc(s1.x, s1.y, 6, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.beginPath();
+                ctx.arc(s2.x, s2.y, 6, 0, Math.PI * 2);
+                ctx.fill();
+            }
 
             // Edges
             ctx.strokeStyle = '#28a745';
@@ -569,8 +736,6 @@
             // Temporary line for edge creation
             if (mode === 'edge' && edgeStartNode) {
                 const s = toScreen(edgeStartNode.x, edgeStartNode.y);
-                // We don't have current mouse pos here easily without tracking it globally
-                // Skipping dynamic line for simplicity, but highlighting start node
                 ctx.beginPath();
                 ctx.arc(s.x, s.y, NODE_RADIUS + 5, 0, Math.PI * 2);
                 ctx.strokeStyle = 'yellow';
