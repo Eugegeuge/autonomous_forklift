@@ -20,7 +20,8 @@
 import rclpy
 from rclpy.node import Node
 from nav_msgs.msg import Odometry
-from std_msgs.msg import Bool
+from std_msgs.msg import Bool, String
+
 import threading
 import sys
 import termios
@@ -53,13 +54,13 @@ GRASP_OFFSET_X = 0.8    # metros delante del forklift (reducido para acercarlo)
 GRASP_OFFSET_Z = 0.0    # altura del pallet levantado (0.0 = a ras de suelo)
 
 # Distancia máxima para enganchar un pallet (metros)
-MAX_GRASP_DISTANCE = 5.0  # Aumentado para facilitar el enganche
+MAX_GRASP_DISTANCE = 10.0  # Aumentado para facilitar el enganche
 
 # Posiciones iniciales de los pallets (deben coincidir con mundo.xml)
 PALLET_POSITIONS = {
-    'pallet_1': (0.0, 5.0),    # init_pose: 0 5 0
-    'pallet_2': (0.0, -5.0),   # init_pose: 0 -5 0
-    'pallet_3': (12.0, 0.0),   # init_pose: 12 0 90
+    'pallet_1': (0.0, 3.0),    # init_pose: 0 3.0 0
+    'pallet_2': (0.0, -3.0),   # init_pose: 0 -3.0 0
+    'pallet_3': (14.0, 0.0),   # init_pose: 14.0 0 90
     'pallet_4': (-14.0, 9.0),  # init_pose: -14 9 0
     'pallet_5': (0.0, -9.0),   # init_pose: 0 -9 180
 }
@@ -71,7 +72,6 @@ ODOM_TOPICS = [
     '/forklift/base_pose_ground_truth',
     '/mvsim_node/forklift/odom',
 ]
-
 
 class LiftController(Node):
     def __init__(self):
@@ -114,6 +114,10 @@ class LiftController(Node):
             '/forklift/lift_state',
             10
         )
+
+        # Subscribers for Interface Commands
+        self.sub_grasp = self.create_subscription(String, 'agarre', self.grasp_callback, 10)
+        self.sub_deposit = self.create_subscription(String, 'deposicion', self.deposit_callback, 10)
         
         # Timer para actualizar pallet
         self.timer = self.create_timer(0.02, self.update_pallet_position)
@@ -122,6 +126,16 @@ class LiftController(Node):
         self.connect_mvsim()
         
         self.get_logger().info(__doc__)
+
+    def grasp_callback(self, msg):
+        if "ON" in msg.data:
+            self.get_logger().info("📥 Recibido comando AGARRE")
+            self.grasp()
+
+    def deposit_callback(self, msg):
+        if "ON" in msg.data:
+            self.get_logger().info("📤 Recibido comando DEPOSICION")
+            self.release()
 
     def connect_mvsim(self):
         """Conecta al servidor mvsim"""
@@ -311,17 +325,21 @@ class LiftController(Node):
 
 def get_key(timeout=0.1):
     """Lee una tecla del teclado"""
-    settings = termios.tcgetattr(sys.stdin)
     try:
-        tty.setraw(sys.stdin.fileno())
-        rlist, _, _ = select.select([sys.stdin], [], [], timeout)
-        if rlist:
-            key = sys.stdin.read(1)
-        else:
-            key = ''
-    finally:
-        termios.tcsetattr(sys.stdin, termios.TCSADRAIN, settings)
-    return key
+        settings = termios.tcgetattr(sys.stdin)
+        try:
+            tty.setraw(sys.stdin.fileno())
+            rlist, _, _ = select.select([sys.stdin], [], [], timeout)
+            if rlist:
+                key = sys.stdin.read(1)
+            else:
+                key = ''
+        finally:
+            termios.tcsetattr(sys.stdin, termios.TCSADRAIN, settings)
+        return key
+    except Exception:
+        time.sleep(timeout)
+        return ''
 
 
 def main(args=None):

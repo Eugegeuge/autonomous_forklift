@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import rclpy
 from rclpy.node import Node
+from geometry_msgs.msg import Twist
 from std_msgs.msg import String
 import tkinter as tk
 from tkinter import ttk, scrolledtext
@@ -22,6 +23,7 @@ class InterfaceNode(Node):
         self.pub_status = self.create_publisher(String, 'estado', 10)
         self.pub_goal = self.create_publisher(String, 'navigation_goal', 10)
         self.pub_docking = self.create_publisher(String, 'docking_trigger', 10)
+        self.pub_cmd_vel = self.create_publisher(Twist, '/cmd_vel', 10)
         
         # Subscribers
         self.sub_nav_status = self.create_subscription(String, 'navigation_status', self.nav_status_callback, 10)
@@ -62,6 +64,12 @@ class InterfaceNode(Node):
             
         self.get_logger().info(f'PUB [{topic}]: {payload}')
 
+    def publish_cmd_vel(self, linear, angular):
+        msg = Twist()
+        msg.linear.x = float(linear)
+        msg.angular.z = float(angular)
+        self.pub_cmd_vel.publish(msg)
+
 class ControlPanel:
     def __init__(self, root, ros_node):
         self.root = root
@@ -83,12 +91,14 @@ class ControlPanel:
         self.mission_phase = 0 
         # Phases:
         # 1: Nav -> Origin
-        # 2: Docking @ Origin
-        # 3: Pick (Simulated)
-        # 4: Nav -> Target
-        # 5: Docking @ Target
-        # 6: Drop (Simulated)
-        # 7: Nav -> Home
+        # 2: Approach Origin (Blind)
+        # 3: Pick
+        # 4: Reverse Origin (Blind)
+        # 5: Nav -> Target
+        # 6: Approach Target (Blind)
+        # 7: Drop
+        # 8: Reverse Target (Blind)
+        # 9: Nav -> Home
         
         self.current_origin = ""
         self.current_target = ""
@@ -241,6 +251,19 @@ class ControlPanel:
         self.publicar_mensaje("tarea", "STATUS: ON")
         self.execute_phase()
 
+    def perform_blind_move(self, speed, duration_ms, next_phase_delay_ms=1000):
+        """Executes a blind movement (open loop) for a duration"""
+        if not self.is_active: return
+        
+        # Start moving
+        self.ros_node.publish_cmd_vel(speed, 0.0)
+        
+        # Schedule stop
+        self.root.after(duration_ms, lambda: self.ros_node.publish_cmd_vel(0.0, 0.0))
+        
+        # Schedule next phase
+        self.root.after(duration_ms + next_phase_delay_ms, self.advance_phase)
+
     def execute_phase(self):
         if not self.is_active: return
 
@@ -252,56 +275,68 @@ class ControlPanel:
             self.publicar_mensaje("navigation_goal", self.current_origin)
             
         elif self.mission_phase == 2:
-            # Phase 2: Docking @ Origin
-            self.lbl_current_state.config(text="DOCKING (ARUCO)", fg="#a855f7")
-            self.publicar_mensaje("estado", "FASE 2: Aproximación Fina (ArUco)")
+            # Phase 2: Approach Origin (Blind)
+            self.lbl_current_state.config(text="APROXIMANDO...", fg="#a855f7")
+            self.publicar_mensaje("estado", "FASE 2: Aproximación Ciega")
             self.publicar_mensaje("navegacion", "STATUS: OFF") # Ensure Nav is OFF
-            self.publicar_mensaje("docking_trigger", "START")
+            # Move forward 0.5 m/s for 5 seconds (~2.5m)
+            self.perform_blind_move(0.5, 5000)
             
         elif self.mission_phase == 3:
-            # Phase 3: Pick (Simulated)
+            # Phase 3: Pick
             self.lbl_current_state.config(text="RECOGIENDO CARGA", fg="#eab308")
             self.publicar_mensaje("estado", "FASE 3: Operación de Carga")
-            self.publicar_mensaje("docking_trigger", "STOP") # Stop Docking
             self.publicar_mensaje("agarre", "STATUS: ON")
-            # Simulate time for picking
+            # Wait 3s for picking
             self.root.after(3000, self.advance_phase)
             
         elif self.mission_phase == 4:
-            # Phase 4: Navigate to Target
-            self.lbl_current_state.config(text="NAV -> DESTINO", fg=self.COLOR_STATUS)
-            self.publicar_mensaje("estado", "FASE 4: Yendo a Destino")
-            self.publicar_mensaje("agarre", "STATUS: OFF")
-            self.publicar_mensaje("navegacion", "STATUS: ON")
-            self.log_message(f"DEBUG: Phase 4 sending goal: {self.current_target}")
-            self.publicar_mensaje("navigation_goal", self.current_target)
+            # Phase 4: Reverse Origin (Blind)
+            self.lbl_current_state.config(text="RETROCEDIENDO...", fg="#a855f7")
+            self.publicar_mensaje("estado", "FASE 4: Marcha Atrás")
+            # Move backward -0.5 m/s for 5 seconds
+            self.perform_blind_move(-0.5, 5000)
             
         elif self.mission_phase == 5:
-            # Phase 5: Docking @ Target
-            self.lbl_current_state.config(text="DOCKING (ARUCO)", fg="#a855f7")
-            self.publicar_mensaje("estado", "FASE 5: Aproximación Fina (ArUco)")
-            self.publicar_mensaje("navegacion", "STATUS: OFF")
-            self.publicar_mensaje("docking_trigger", "START")
+            # Phase 5: Navigate to Target
+            self.lbl_current_state.config(text=f"NAV -> {self.current_target}", fg=self.COLOR_STATUS)
+            self.publicar_mensaje("estado", f"FASE 5: Yendo a {self.current_target}")
+            self.publicar_mensaje("agarre", "STATUS: OFF")
+            self.publicar_mensaje("navegacion", "STATUS: ON")
+            self.publicar_mensaje("navigation_goal", self.current_target)
             
         elif self.mission_phase == 6:
-            # Phase 6: Drop (Simulated)
-            self.lbl_current_state.config(text="DEPOSITANDO CARGA", fg="#eab308")
-            self.publicar_mensaje("estado", "FASE 6: Operación de Descarga")
-            self.publicar_mensaje("docking_trigger", "STOP")
-            self.publicar_mensaje("deposicion", "STATUS: ON")
-            # Simulate time for dropping
-            self.root.after(3000, self.advance_phase)
+            # Phase 6: Approach Target (Blind)
+            self.lbl_current_state.config(text="APROXIMANDO...", fg="#a855f7")
+            self.publicar_mensaje("estado", "FASE 6: Aproximación Ciega")
+            self.publicar_mensaje("navegacion", "STATUS: OFF")
+            # Move forward 0.5 m/s for 5 seconds
+            self.perform_blind_move(0.5, 5000)
             
         elif self.mission_phase == 7:
-            # Phase 7: Navigate to Home
-            self.lbl_current_state.config(text="NAV -> HOME", fg=self.COLOR_STATUS)
-            self.publicar_mensaje("estado", "FASE 7: Volviendo a Casa")
-            self.publicar_mensaje("deposicion", "STATUS: OFF")
-            self.publicar_mensaje("navegacion", "STATUS: ON")
-            self.log_message(f"DEBUG: Phase 7 sending goal: HOME")
-            self.publicar_mensaje("navigation_goal", "HOME")
+            # Phase 7: Drop
+            self.lbl_current_state.config(text="DEPOSITANDO CARGA", fg="#eab308")
+            self.publicar_mensaje("estado", "FASE 7: Operación de Descarga")
+            self.publicar_mensaje("deposicion", "STATUS: ON")
+            # Wait 3s for dropping
+            self.root.after(3000, self.advance_phase)
             
         elif self.mission_phase == 8:
+            # Phase 8: Reverse Target (Blind)
+            self.lbl_current_state.config(text="RETROCEDIENDO...", fg="#a855f7")
+            self.publicar_mensaje("estado", "FASE 8: Marcha Atrás")
+            # Move backward -0.5 m/s for 5 seconds
+            self.perform_blind_move(-0.5, 5000)
+            
+        elif self.mission_phase == 9:
+            # Phase 9: Navigate to Home
+            self.lbl_current_state.config(text="NAV -> HOME", fg=self.COLOR_STATUS)
+            self.publicar_mensaje("estado", "FASE 9: Volviendo a Casa")
+            self.publicar_mensaje("deposicion", "STATUS: OFF")
+            self.publicar_mensaje("navegacion", "STATUS: ON")
+            self.publicar_mensaje("navigation_goal", "HOME")
+            
+        elif self.mission_phase == 10:
             # Mission Complete
             self.lbl_current_state.config(text="REPOSO", fg="#22c55e")
             self.publicar_mensaje("estado", "MISION COMPLETADA")
@@ -318,21 +353,11 @@ class ControlPanel:
         
         if source == "NAV" and status == "REACHED":
             # Navigation leg complete
-            if self.mission_phase in [1, 4, 7]: # Only advance if we are in a Nav phase
+            if self.mission_phase in [1, 5, 9]: # Only advance if we are in a Nav phase
                 self.log_message("✅ Tramo NAV completado. Avanzando...")
                 self.root.after(1000, self.advance_phase)
                 
-        elif source == "DOCK":
-            if status == "SUCCESS":
-                # Docking complete
-                if self.mission_phase in [2, 5]: # Only advance if we are in a Docking phase
-                    self.log_message("✅ Docking completado. Avanzando...")
-                    self.root.after(1000, self.advance_phase)
-            elif status == "FAILED":
-                # Docking failed (timeout)
-                self.log_message("❌ Docking FALLIDO (Timeout). Volviendo a casa...")
-                self.mission_phase = 7 # Force jump to Phase 7 (Return Home)
-                self.execute_phase()
+        # Docking status ignored as we use blind approach now
 
     def advance_phase(self):
         if not self.is_active: return

@@ -33,8 +33,17 @@ def generate_launch_description():
         output='screen'
     )
 
+    # 4. Lift Controller
+    lift_controller = Node(
+        package='autonomous_forklift',
+        executable='lift_controller.py',
+        name='lift_controller',
+        output='screen'
+    )
+
     return LaunchDescription([
         navigation,
         waypoint_follower,
-        interface
+        interface,
+        lift_controller
     ])
