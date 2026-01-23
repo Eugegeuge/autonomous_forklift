@@ -203,16 +203,8 @@ class NavigationNode(Node):
         self.get_logger().info(f'Path found with {len(self.waypoints)} waypoints. Starting navigation.')
 
     def scan_callback(self, msg):
-        # Simplified obstacle detection
-        # Filter out points closer than 0.5m (likely self-detection) and further than 1.5m
-        min_dist = min([r for r in msg.ranges if 0.5 < r < 1.5], default=10.0)
-        
-        if min_dist < 0.8:
-            if not self.obstacle_detected:
-                self.get_logger().warn(f'🛑 OBSTACLE: {min_dist:.2f}m')
-            self.obstacle_detected = True
-        else:
-            self.obstacle_detected = False
+        # Obstacle detection disabled by user request
+        self.obstacle_detected = False
 
     def odom_callback(self, msg):
         pos = msg.pose.pose.position
@@ -229,16 +221,36 @@ class NavigationNode(Node):
         if self.state in ['IDLE', 'DONE'] or not self.current_pose:
             return
 
-        if self.obstacle_detected:
-            self.stop_robot()
-            return
+        # Obstacle check removed
 
         if self.current_waypoint_idx >= len(self.waypoints):
-            self.state = 'DONE'
-            self.stop_robot()
-            self.publish_status("REACHED")
-            self.active_goal = None # Clear active goal to prevent stale replanning
-            self.get_logger().info('🎉 Destination reached!')
+            # Reached last waypoint position, now ALIGN
+            if self.state != 'ALIGNING':
+                self.state = 'ALIGNING'
+                # Calculate nearest cardinal angle (0, 90, 180, 270 deg)
+                yaw = self.current_pose['yaw']
+                # Normalize to 0..2pi for easier rounding? No, -pi..pi is fine.
+                # pi/2 = 1.5708
+                # Divide by pi/2, round, multiply by pi/2
+                steps = round(yaw / (math.pi / 2.0))
+                self.target_yaw = steps * (math.pi / 2.0)
+                self.get_logger().info(f'📍 Position reached. Aligning to nearest cardinal: {math.degrees(self.target_yaw):.0f} deg')
+            
+            # Execute Alignment
+            angle_error = self.normalize_angle(self.target_yaw - self.current_pose['yaw'])
+            
+            if abs(angle_error) < 0.05: # ~3 degrees tolerance
+                self.state = 'DONE'
+                self.stop_robot()
+                self.publish_status("REACHED")
+                self.active_goal = None
+                self.get_logger().info('🎉 Destination reached & Aligned!')
+            else:
+                cmd = Twist()
+                cmd.angular.z = 0.8 * angle_error
+                cmd.angular.z = max(-0.5, min(0.5, cmd.angular.z)) # Slower rotation for alignment
+                self.cmd_vel_pub.publish(cmd)
+            
             return
 
         target_x, target_y = self.waypoints[self.current_waypoint_idx]

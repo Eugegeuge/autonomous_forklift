@@ -50,7 +50,7 @@ except ImportError as e:
 
 # Offset del pallet cuando está enganchado
 GRASP_OFFSET_X = 0.8    # metros delante del forklift (reducido para acercarlo)
-GRASP_OFFSET_Z = 0.0    # altura del pallet levantado (0 = a ras de suelo)
+GRASP_OFFSET_Z = 0.0    # altura del pallet levantado (0.0 = a ras de suelo)
 
 # Distancia máxima para enganchar un pallet (metros)
 MAX_GRASP_DISTANCE = 5.0  # Aumentado para facilitar el enganche

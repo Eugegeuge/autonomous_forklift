@@ -111,8 +111,8 @@
 				<shape>
 					<pt>-1.0 -0.4</pt>
 					<pt>-1.0  0.4</pt>
-					<pt> 0.2  0.4</pt>
-					<pt> 0.2 -0.4</pt>
+					<pt> 0.0  0.4</pt>
+					<pt> 0.0 -0.4</pt>
 				</shape>
 			</chassis>
 			
@@ -143,7 +143,7 @@
 
 		<!-- LIDAR 2D 360° para SLAM/Mapping (montado arriba) -->
 		<sensor class="laser" name="scan">
-			<pose_3d>0.3 0 0.5 0 0 0</pose_3d>
+			<pose_3d>-0.5 0 2.2 0 0 0</pose_3d>
 			<fov_degrees>360</fov_degrees>
 			<sensor_period>0.05</sensor_period>
 			<nrays>360</nrays>
