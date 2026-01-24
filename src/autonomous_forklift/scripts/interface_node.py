@@ -155,6 +155,17 @@ class ControlPanel:
             print(f"Error loading graph: {e}")
             self.posibles_ubicaciones = ["HOME", "ESTANTERIA_1", "ESTANTERIA_2"] # Fallback
 
+        # --- ESTADO DE ESTANTERÍAS ---
+        # True = Tiene Pallet (Ocupada)
+        # False = Vacía (Libre)
+        self.shelf_status = {}
+        for loc in self.posibles_ubicaciones:
+            # Inicialización: 6 y 7 vacías, resto llenas (según usuario)
+            if "ESTANTERIA_6" in loc or "ESTANTERIA_7" in loc:
+                self.shelf_status[loc] = False
+            else:
+                self.shelf_status[loc] = True
+                
         # --- GUI ELEMENTS ---
         lbl_title = tk.Label(root, text="CONTROL DE MISIÓN", font=font_title, bg=self.COLOR_BG, fg=self.COLOR_ACCENT)
         lbl_title.pack(pady=(30, 20)) 
@@ -168,15 +179,16 @@ class ControlPanel:
 
         # Origen
         tk.Label(frame_inputs, text="Origen (ID_LOC1):", font=font_label, bg=self.COLOR_BG, fg=self.COLOR_TEXT).grid(row=0, column=0, padx=10, pady=10, sticky="e")
-        self.combo_origin = ttk.Combobox(frame_inputs, values=self.posibles_ubicaciones, font=font_input, width=20, state="readonly")
+        self.combo_origin = ttk.Combobox(frame_inputs, font=font_input, width=20, state="readonly")
         self.combo_origin.grid(row=0, column=1, padx=10, pady=10)
-        self.combo_origin.current(0) 
 
         # Destino
         tk.Label(frame_inputs, text="Destino (ID_LOC2):", font=font_label, bg=self.COLOR_BG, fg=self.COLOR_TEXT).grid(row=1, column=0, padx=10, pady=10, sticky="e")
-        self.combo_target = ttk.Combobox(frame_inputs, values=self.posibles_ubicaciones, font=font_input, width=20, state="readonly")
+        self.combo_target = ttk.Combobox(frame_inputs, font=font_input, width=20, state="readonly")
         self.combo_target.grid(row=1, column=1, padx=10, pady=10)
-        self.combo_target.current(1) 
+        
+        # Inicializar combos filtrados
+        self.update_comboboxes()
 
         # Boton Start
         self.btn_start = tk.Button(root, text="INICIAR TAREA", command=self.start_mission, 
@@ -190,7 +202,8 @@ class ControlPanel:
 
         self.combo_direct = ttk.Combobox(frame_direct, values=self.posibles_ubicaciones, font=font_input, width=15, state="readonly")
         self.combo_direct.pack(side="left", padx=10, pady=10)
-        self.combo_direct.current(0)
+        if self.posibles_ubicaciones:
+            self.combo_direct.current(0)
 
         self.btn_go = tk.Button(frame_direct, text="IR AHORA", command=self.go_direct,
                                 bg="#22c55e", fg="black", font=("Arial", 12, "bold"),
@@ -216,6 +229,34 @@ class ControlPanel:
                              bg="#ef4444", fg="white", font=font_btn_stop, 
                              height=2, width=25, cursor="hand2")
         btn_stop.pack(side=tk.BOTTOM, pady=30)
+
+    def update_comboboxes(self):
+        """Actualiza las listas de origen y destino según el estado de los pallets"""
+        origins = []
+        targets = []
+        
+        for loc in self.posibles_ubicaciones:
+            # Solo considerar estanterías para la misión de carga/descarga
+            if not loc.startswith("ESTANTERIA"):
+                continue
+                
+            has_pallet = self.shelf_status.get(loc, False)
+            
+            # Origen: Solo si tiene pallet
+            if has_pallet:
+                origins.append(loc)
+            
+            # Destino: Solo si NO tiene pallet
+            if not has_pallet:
+                targets.append(loc)
+                
+        self.combo_origin['values'] = origins
+        if origins: self.combo_origin.set(origins[0])
+        else: self.combo_origin.set('')
+        
+        self.combo_target['values'] = targets
+        if targets: self.combo_target.set(targets[0])
+        else: self.combo_target.set('')
 
     def log_message(self, message):
         timestamp = datetime.datetime.now().strftime("%H:%M:%S")
@@ -308,6 +349,13 @@ class ControlPanel:
             self.lbl_current_state.config(text="RECOGIENDO CARGA", fg="#eab308")
             self.publicar_mensaje("estado", "FASE 3: Operación de Carga")
             self.publicar_mensaje("agarre", "STATUS: ON")
+            
+            # Actualizar estado: Origen ahora está vacío
+            if self.current_origin in self.shelf_status:
+                self.shelf_status[self.current_origin] = False
+                self.update_comboboxes()
+                self.log_message(f"📦 Estantería {self.current_origin} marcada como VACÍA")
+
             # Wait 2s for picking
             self.root.after(2000, self.advance_phase)
             
@@ -348,6 +396,13 @@ class ControlPanel:
             self.lbl_current_state.config(text="DEPOSITANDO CARGA", fg="#eab308")
             self.publicar_mensaje("estado", "FASE 7: Operación de Descarga")
             self.publicar_mensaje("deposicion", "STATUS: ON")
+            
+            # Actualizar estado: Destino ahora tiene pallet
+            if self.current_target in self.shelf_status:
+                self.shelf_status[self.current_target] = True
+                self.update_comboboxes()
+                self.log_message(f"📦 Estantería {self.current_target} marcada como OCUPADA")
+
             # Wait 3s for dropping
             self.root.after(1700, self.advance_phase)
             
@@ -381,6 +436,7 @@ class ControlPanel:
             self.publicar_mensaje("estado", "MISION COMPLETADA")
             self.publicar_mensaje("tarea", "STATUS: OFF")
             self.publicar_mensaje("navegacion", "STATUS: OFF")
+            
             self.is_active = False
             self.mission_phase = 0
 
