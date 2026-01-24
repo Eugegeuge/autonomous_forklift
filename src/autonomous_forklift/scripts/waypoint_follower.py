@@ -31,7 +31,7 @@ class NavigationNode(Node):
         
         # Parameters
         self.declare_parameter('graph_file', '')
-        self.declare_parameter('linear_speed', 2.2)
+        self.declare_parameter('linear_speed', 2.0)
         self.declare_parameter('angular_speed', 1.0)
         self.declare_parameter('distance_tolerance', 0.25)
         self.declare_parameter('angle_tolerance', 0.05)
