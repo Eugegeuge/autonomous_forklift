@@ -97,6 +97,8 @@ class ControlPanel:
         self.root.configure(bg=self.COLOR_BG) 
 
         self.is_active = False
+        self.is_paused = False  # For emergency stop toggle
+        self.saved_phase = 0    # Phase to resume after pause
         self.mission_phase = 0 
         # Phases:
         # 1: Nav -> Origin
@@ -225,10 +227,10 @@ class ControlPanel:
         self.console_log.pack(padx=20, pady=5, fill="x")
 
         # Stop
-        btn_stop = tk.Button(root, text="PARADA DE EMERGENCIA", command=self.emergency_stop, 
+        self.btn_stop = tk.Button(root, text="PARADA DE EMERGENCIA", command=self.emergency_stop, 
                              bg="#ef4444", fg="white", font=font_btn_stop, 
                              height=2, width=25, cursor="hand2")
-        btn_stop.pack(side=tk.BOTTOM, pady=30)
+        self.btn_stop.pack(side=tk.BOTTOM, pady=30)
 
     def update_comboboxes(self):
         """Actualiza las listas de origen y destino según el estado de los pallets"""
@@ -388,7 +390,7 @@ class ControlPanel:
             self.lbl_current_state.config(text="APROXIMANDO...", fg="#a855f7")
             self.publicar_mensaje("estado", "FASE 6: Aproximación Ciega")
             self.publicar_mensaje("navegacion", "STATUS: OFF")
-            # Move forward 0.5 m/s for 3 seconds (~1.5m)
+            # Move forward 0.5 m/s for 1 second (~1.5m)
             self.perform_blind_move(0.5, 1000)
             
         elif self.mission_phase == 7:
@@ -438,7 +440,10 @@ class ControlPanel:
             self.publicar_mensaje("navegacion", "STATUS: OFF")
             
             self.is_active = False
+            self.is_paused = False
+            self.saved_phase = 0
             self.mission_phase = 0
+            self.btn_stop.config(text="PARADA DE EMERGENCIA", bg="#ef4444")
 
     def on_status_received(self, source, status):
         """Callback when Navigation or Docking Node reports status"""
@@ -480,12 +485,33 @@ class ControlPanel:
         self.execute_phase()
 
     def emergency_stop(self):
-        self.publicar_mensaje("tarea", "STATUS: OFF")
-        self.publicar_mensaje("navegacion", "STATUS: OFF")
-        self.publicar_mensaje("docking_trigger", "STOP")
-        self.is_active = False
-        self.mission_phase = 0
-        self.lbl_current_state.config(text="STOPPED", fg="#ef4444")
+        if not self.is_paused:
+            # PAUSE: Stop the robot and save state
+            self.ros_node.publish_cmd_vel(0.0, 0.0)
+            self.log_message("🛑 PARADA DE EMERGENCIA ACTIVADA")
+            
+            self.publicar_mensaje("navegacion", "STATUS: OFF")
+            
+            # Save current state for resuming
+            self.saved_phase = self.mission_phase
+            self.is_paused = True
+            self.is_active = False
+            
+            self.lbl_current_state.config(text="PAUSED", fg="#ef4444")
+            self.btn_stop.config(text="CONTINUAR TRAYECTO", bg="#22c55e")
+        else:
+            # RESUME: Continue from saved state
+            self.log_message("▶️ REANUDANDO TRAYECTO")
+            
+            self.is_paused = False
+            self.is_active = True
+            self.mission_phase = self.saved_phase
+            
+            self.btn_stop.config(text="PARADA DE EMERGENCIA", bg="#ef4444")
+            
+            # Re-enable navigation and re-execute current phase
+            self.publicar_mensaje("tarea", "STATUS: ON")
+            self.execute_phase()
 
 def main():
     rclpy.init()

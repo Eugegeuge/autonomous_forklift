@@ -105,9 +105,10 @@ class NavigationNode(Node):
     def nav_callback(self, msg):
         command = msg.data
         self.get_logger().info(f'Received command: {command}')
-        if command == 'ON':
+        # Parse both 'ON'/'OFF' and 'STATUS: ON'/'STATUS: OFF' formats
+        if command == 'ON' or command == 'STATUS: ON':
             self.nav_enabled = True
-        elif command == 'OFF':
+        elif command == 'OFF' or command == 'STATUS: OFF':
             self.nav_enabled = False
             self.stop_robot()
             self.state = 'IDLE'

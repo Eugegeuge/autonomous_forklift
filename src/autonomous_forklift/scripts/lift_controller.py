@@ -54,7 +54,7 @@ GRASP_OFFSET_X = 0.8    # metros delante del forklift (reducido para acercarlo)
 GRASP_OFFSET_Z = 0.0    # altura del pallet levantado (0.0 = a ras de suelo)
 
 # Distancia máxima para enganchar un pallet (metros)
-MAX_GRASP_DISTANCE = 10.0  # Aumentado para facilitar el enganche
+MAX_GRASP_DISTANCE = 3.0  # Aumentado para facilitar el enganche
 
 # Posiciones iniciales de los pallets (deben coincidir con mundo.xml)
 PALLET_POSITIONS = {
