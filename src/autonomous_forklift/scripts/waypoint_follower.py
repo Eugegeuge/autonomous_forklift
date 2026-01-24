@@ -31,10 +31,10 @@ class NavigationNode(Node):
         
         # Parameters
         self.declare_parameter('graph_file', '')
-        self.declare_parameter('linear_speed', 2.0)
+        self.declare_parameter('linear_speed', 2.2)
         self.declare_parameter('angular_speed', 1.0)
-        self.declare_parameter('distance_tolerance', 0.8)
-        self.declare_parameter('angle_tolerance', 0.1)
+        self.declare_parameter('distance_tolerance', 0.25)
+        self.declare_parameter('angle_tolerance', 0.05)
         
         graph_file = self.get_parameter('graph_file').get_parameter_value().string_value
         self.linear_speed = self.get_parameter('linear_speed').get_parameter_value().double_value
@@ -73,13 +73,18 @@ class NavigationNode(Node):
         self.current_pose = None
         self.state = 'IDLE'  # IDLE, PLANNING, ROTATING, MOVING, DONE
         self.waypoints = []
+        self.path_node_ids = []  # Store node IDs of the path
         self.current_waypoint_idx = 0
         self.active_goal = None
+        self.reverse_mode = False  # Navigation in reverse
+        self.reverse_start_yaw = 0.0  # Yaw al comenzar reverse
+        self.pending_previous_node = None  # Nodo anterior pendiente de publicar
         
         # Publishers
         self.cmd_vel_pub = self.create_publisher(Twist, '/cmd_vel', 10)
         self.marker_pub = self.create_publisher(MarkerArray, '/waypoint_markers', 10)
         self.pub_nav_status = self.create_publisher(String, 'navigation_status', 10)
+        self.pub_previous_node = self.create_publisher(String, 'previous_node', 10)  # Nodo anterior del path
         
         # Subscribers
         self.odom_sub = self.create_subscription(Odometry, '/odom', self.odom_callback, qos_profile_sensor_data)
@@ -108,8 +113,47 @@ class NavigationNode(Node):
             self.state = 'IDLE'
 
     def goal_callback(self, msg):
-        goal_name = msg.data
-        self.get_logger().info(f'Received goal: {goal_name}')
+        goal_data = msg.data
+        self.get_logger().info(f'Received goal: {goal_data}')
+        
+        # Check if reverse mode: "REVERSE:NODE_ID" (usamos ID, no nombre)
+        if goal_data.startswith('REVERSE:'):
+            node_id_or_name = goal_data.split(':', 1)[1]
+            self.reverse_mode = True
+            self.get_logger().info(f'🔄 REVERSE navigation to: {node_id_or_name}')
+            
+            # Para reversa: ir directamente al nodo
+            # Primero intentar como ID directo, luego como nombre
+            if node_id_or_name in self.nodes:
+                target_node_id = node_id_or_name
+            else:
+                target_node_id = self.location_map.get(node_id_or_name)
+            
+            if not target_node_id:
+                self.get_logger().error(f'Unknown location for reverse: {node_id_or_name}')
+                return
+            
+            # Solo un waypoint: el nodo destino
+            n = self.nodes[target_node_id]
+            self.waypoints = [(n['x'], n['y'])]
+            self.path_node_ids = [target_node_id]
+            self.current_waypoint_idx = 0
+            self.active_goal = node_id_or_name
+            
+            # GUARDAR el yaw actual - retrocederemos en esta dirección
+            if self.current_pose:
+                self.reverse_start_yaw = self.current_pose['yaw']
+            else:
+                self.reverse_start_yaw = 0.0
+            
+            self.state = 'MOVING'
+            self.publish_status("MOVING")
+            self.get_logger().info(f'🔙 Reverse: backing up straight (yaw={math.degrees(self.reverse_start_yaw):.0f}°)')
+            return
+        else:
+            goal_name = goal_data
+            self.reverse_mode = False
+        
         self.active_goal = goal_name
         self.plan_path(goal_name)
 
@@ -191,13 +235,34 @@ class NavigationNode(Node):
                 self.get_logger().error('No path found!')
                 return
 
-        # Convert path nodes to coordinates
+        # Convert path nodes to coordinates and store node IDs
         self.waypoints = []
+        self.path_node_ids = path.copy()
         for nid in path:
             n = self.nodes[nid]
             self.waypoints.append((n['x'], n['y']))
-            
+        
+        # Store the previous node (penultimate in path) for reverse navigation
+        # Will be published when we reach the destination
+        if len(self.path_node_ids) >= 2:
+            self.pending_previous_node = self.path_node_ids[-2]
+        else:
+            # Si solo hay 1 nodo en el path, el nodo anterior es el de inicio
+            self.pending_previous_node = start_node_id
+        
+        prev_node_name = self.nodes[self.pending_previous_node].get('name', self.pending_previous_node)
+        self.get_logger().info(f'📍 Previous node will be: {prev_node_name}')
+        
+        # Si ya estamos muy cerca del primer waypoint, saltarlo
         self.current_waypoint_idx = 0
+        if len(self.waypoints) > 1:
+            first_wp = self.waypoints[0]
+            dist_to_first = math.sqrt((first_wp[0] - self.current_pose['x'])**2 + 
+                                       (first_wp[1] - self.current_pose['y'])**2)
+            if dist_to_first < 1.0:  # Si estamos a menos de 1m del primer waypoint
+                self.current_waypoint_idx = 1  # Saltar al siguiente
+                self.get_logger().info(f'⏭️ Skipping first waypoint (already here, dist={dist_to_first:.2f})')
+            
         self.state = 'ROTATING'
         self.publish_status("MOVING")
         self.get_logger().info(f'Path found with {len(self.waypoints)} waypoints. Starting navigation.')
@@ -242,6 +307,16 @@ class NavigationNode(Node):
             if abs(angle_error) < 0.05: # ~3 degrees tolerance
                 self.state = 'DONE'
                 self.stop_robot()
+                
+                # Publicar el nodo anterior AHORA que llegamos (solo si no es reversa)
+                # Publicamos el ID del nodo, no el nombre (para evitar duplicados)
+                if not self.reverse_mode and self.pending_previous_node:
+                    prev_msg = String()
+                    prev_msg.data = self.pending_previous_node  # Usar ID, no nombre
+                    self.pub_previous_node.publish(prev_msg)
+                    prev_node_name = self.nodes[self.pending_previous_node].get('name', self.pending_previous_node)
+                    self.get_logger().info(f'📍 Published previous node ID: {self.pending_previous_node} ({prev_node_name})')
+                
                 self.publish_status("REACHED")
                 self.active_goal = None
                 self.get_logger().info('🎉 Destination reached & Aligned!')
@@ -258,6 +333,39 @@ class NavigationNode(Node):
         dy = target_y - self.current_pose['y']
         distance = math.sqrt(dx*dx + dy*dy)
         target_angle = math.atan2(dy, dx)
+        
+        # === MODO REVERSA ===
+        # Primero orientar trasero hacia el nodo, luego retroceder RECTO
+        if self.reverse_mode:
+            cmd = Twist()
+            
+            # ¿Llegamos?
+            if distance < 0.5:
+                self.get_logger().info(f'✅ Reverse done! dist={distance:.2f}')
+                self.stop_robot()
+                self.state = 'DONE'
+                self.reverse_mode = False
+                self.publish_status("REACHED")
+                return
+            
+            # El trasero debe apuntar hacia el nodo destino
+            rear_target_yaw = self.normalize_angle(target_angle + math.pi)
+            angle_error = self.normalize_angle(rear_target_yaw - self.current_pose['yaw'])
+            
+            # Si el trasero no apunta hacia el nodo (error > 25°), girar primero
+            if abs(angle_error) > 0.45:
+                cmd.linear.x = 0.0
+                cmd.angular.z = 0.35 if angle_error > 0 else -0.35  # Velocidad fija
+                self.get_logger().info(f'REV ALIGN: err={math.degrees(angle_error):.0f}° dist={distance:.2f}', throttle_duration_sec=0.5)
+            else:
+                # Trasero alineado, retroceder SIN corrección angular
+                cmd.linear.x = -0.5
+                cmd.angular.z = 0.0  # SIN CORRECCIÓN - línea recta
+                self.get_logger().info(f'REV BACK: dist={distance:.2f}', throttle_duration_sec=0.5)
+            
+            self.cmd_vel_pub.publish(cmd)
+            return
+        
         angle_error = self.normalize_angle(target_angle - self.current_pose['yaw'])
 
         cmd = Twist()
@@ -280,9 +388,8 @@ class NavigationNode(Node):
                 target_speed = self.linear_speed * 0.5
             
             cmd.linear.x = target_speed
-            
-            # Smoother angular control
             cmd.angular.z = 0.8 * angle_error
+            
             cmd.angular.z = max(-self.angular_speed, min(self.angular_speed, cmd.angular.z))
             
             self.get_logger().info(f'NAV: v={cmd.linear.x:.2f} w={cmd.angular.z:.2f} dist={distance:.2f}', throttle_duration_sec=0.5)
@@ -317,8 +424,8 @@ class NavigationNode(Node):
             marker.id = i
             marker.type = Marker.SPHERE
             marker.action = Marker.ADD
-            marker.pose.position.x = x
-            marker.pose.position.y = y
+            marker.pose.position.x = float(x)
+            marker.pose.position.y = float(y)
             marker.pose.position.z = 0.2
             marker.scale.x = 0.3; marker.scale.y = 0.3; marker.scale.z = 0.3
             marker.color = ColorRGBA(r=0.0, g=1.0, b=0.0, a=0.8)

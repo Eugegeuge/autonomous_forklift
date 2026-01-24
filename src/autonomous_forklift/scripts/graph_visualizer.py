@@ -105,9 +105,9 @@ class GraphVisualizer(Node):
             marker.action = Marker.ADD
             
             # Position
-            marker.pose.position.x = node_data['x']
-            marker.pose.position.y = node_data['y']
-            marker.pose.position.z = node_data['z']
+            marker.pose.position.x = float(node_data['x'])
+            marker.pose.position.y = float(node_data['y'])
+            marker.pose.position.z = float(node_data['z'])
             marker.pose.orientation.w = 1.0
             
             # Scale (sphere diameter)
@@ -133,9 +133,9 @@ class GraphVisualizer(Node):
             text_marker.type = Marker.TEXT_VIEW_FACING
             text_marker.action = Marker.ADD
             
-            text_marker.pose.position.x = node_data['x']
-            text_marker.pose.position.y = node_data['y']
-            text_marker.pose.position.z = node_data['z'] + 0.7
+            text_marker.pose.position.x = float(node_data['x'])
+            text_marker.pose.position.y = float(node_data['y'])
+            text_marker.pose.position.z = float(node_data['z']) + 0.7
             text_marker.pose.orientation.w = 1.0
             
             text_marker.scale.z = 0.4  # Text height
@@ -158,8 +158,8 @@ class GraphVisualizer(Node):
             # Points
             for coord in edge['points']:
                 p = Point()
-                p.x = coord[0]
-                p.y = coord[1]
+                p.x = float(coord[0])
+                p.y = float(coord[1])
                 p.z = 0.0
                 marker.points.append(p)
             
@@ -191,8 +191,8 @@ class GraphVisualizer(Node):
                 weight_marker.type = Marker.TEXT_VIEW_FACING
                 weight_marker.action = Marker.ADD
                 
-                weight_marker.pose.position.x = mid_x
-                weight_marker.pose.position.y = mid_y
+                weight_marker.pose.position.x = float(mid_x)
+                weight_marker.pose.position.y = float(mid_y)
                 weight_marker.pose.position.z = 0.3
                 weight_marker.pose.orientation.w = 1.0
                 

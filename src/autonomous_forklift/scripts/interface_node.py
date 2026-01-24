@@ -28,6 +28,10 @@ class InterfaceNode(Node):
         # Subscribers
         self.sub_nav_status = self.create_subscription(String, 'navigation_status', self.nav_status_callback, 10)
         self.sub_dock_status = self.create_subscription(String, 'docking_status', self.dock_status_callback, 10)
+        self.sub_prev_node = self.create_subscription(String, 'previous_node', self.prev_node_callback, 10)
+        
+        # Store previous node from navigation
+        self.last_previous_node = None
         
         self.get_logger().info('Interface Node Started')
 
@@ -40,6 +44,11 @@ class InterfaceNode(Node):
         self.get_logger().info(f'RECV [docking_status]: {msg.data}')
         if self.gui_callback:
             self.gui_callback("DOCK", msg.data)
+
+    def prev_node_callback(self, msg):
+        """Store the previous node from navigation path"""
+        self.last_previous_node = msg.data
+        self.get_logger().info(f'RECV [previous_node]: {msg.data}')
 
     def publish_message(self, topic, payload):
         msg = String()
@@ -93,15 +102,17 @@ class ControlPanel:
         # 1: Nav -> Origin
         # 2: Approach Origin (Blind)
         # 3: Pick
-        # 4: Reverse Origin (Blind)
+        # 4: Reverse to previous node (navigated)
         # 5: Nav -> Target
         # 6: Approach Target (Blind)
         # 7: Drop
-        # 8: Reverse Target (Blind)
+        # 8: Reverse to previous node (navigated)
         # 9: Nav -> Home
         
         self.current_origin = ""
         self.current_target = ""
+        self.origin_previous_node = ""   # Nodo anterior al origen
+        self.target_previous_node = ""   # Nodo anterior al destino
 
         # --- FUENTES ---
         font_title = ("Helvetica", 22, "bold")
@@ -245,6 +256,12 @@ class ControlPanel:
         
         self.current_origin = origin
         self.current_target = target
+        
+        # Limpiar nodos anteriores de misiones previas
+        self.origin_previous_node = ""
+        self.target_previous_node = ""
+        self.ros_node.last_previous_node = None
+        
         self.is_active = True
         self.mission_phase = 1 # Start Phase 1: Go to Origin
         
@@ -284,22 +301,31 @@ class ControlPanel:
             self.publicar_mensaje("estado", "FASE 2: Aproximación Ciega")
             self.publicar_mensaje("navegacion", "STATUS: OFF") # Ensure Nav is OFF
             # Move forward 0.5 m/s for 3 seconds (~1.5m)
-            self.perform_blind_move(0.5, 1500)
+            self.perform_blind_move(0.5, 900)
             
         elif self.mission_phase == 3:
             # Phase 3: Pick
             self.lbl_current_state.config(text="RECOGIENDO CARGA", fg="#eab308")
             self.publicar_mensaje("estado", "FASE 3: Operación de Carga")
             self.publicar_mensaje("agarre", "STATUS: ON")
-            # Wait 3s for picking
-            self.root.after(3000, self.advance_phase)
+            # Wait 2s for picking
+            self.root.after(2000, self.advance_phase)
             
         elif self.mission_phase == 4:
-            # Phase 4: Reverse Origin (Blind)
+            # Phase 4: Retroceder al nodo anterior (navegación reversa)
             self.lbl_current_state.config(text="RETROCEDIENDO...", fg="#a855f7")
-            self.publicar_mensaje("estado", "FASE 4: Marcha Atrás")
-            # Move backward -0.5 m/s for 4 seconds (~2m)
-            self.perform_blind_move(-0.5, 1500)
+            self.publicar_mensaje("estado", "FASE 4: Retroceso al nodo anterior")
+            prev_node = self.origin_previous_node
+            self.log_message(f"📍 Nodo anterior origen: '{prev_node}'")
+            
+            if prev_node and prev_node.strip():
+                self.publicar_mensaje("navegacion", "STATUS: ON")
+                self.publicar_mensaje("navigation_goal", f"REVERSE:{prev_node}")
+                self.log_message(f"🔄 Navegación reversa a: {prev_node}")
+            else:
+                # Fallback: blind move si no hay nodo anterior
+                self.log_message("⚠️ Sin nodo anterior, usando movimiento ciego")
+                self.perform_blind_move(-0.5, 2000)
             
         elif self.mission_phase == 5:
             # Phase 5: Navigate to Target
@@ -315,7 +341,7 @@ class ControlPanel:
             self.publicar_mensaje("estado", "FASE 6: Aproximación Ciega")
             self.publicar_mensaje("navegacion", "STATUS: OFF")
             # Move forward 0.5 m/s for 3 seconds (~1.5m)
-            self.perform_blind_move(0.5, 1500)
+            self.perform_blind_move(0.5, 1000)
             
         elif self.mission_phase == 7:
             # Phase 7: Drop
@@ -323,14 +349,23 @@ class ControlPanel:
             self.publicar_mensaje("estado", "FASE 7: Operación de Descarga")
             self.publicar_mensaje("deposicion", "STATUS: ON")
             # Wait 3s for dropping
-            self.root.after(3000, self.advance_phase)
+            self.root.after(1700, self.advance_phase)
             
         elif self.mission_phase == 8:
-            # Phase 8: Reverse Target (Blind)
+            # Phase 8: Retroceder al nodo anterior (navegación reversa)
             self.lbl_current_state.config(text="RETROCEDIENDO...", fg="#a855f7")
-            self.publicar_mensaje("estado", "FASE 8: Marcha Atrás")
-            # Move backward -0.5 m/s for 4 seconds (~2m)
-            self.perform_blind_move(-0.5, 2500)
+            self.publicar_mensaje("estado", "FASE 8: Retroceso al nodo anterior")
+            prev_node = self.target_previous_node
+            self.log_message(f"📍 Nodo anterior target: '{prev_node}'")
+            
+            if prev_node and prev_node.strip():
+                self.publicar_mensaje("navegacion", "STATUS: ON")
+                self.publicar_mensaje("navigation_goal", f"REVERSE:{prev_node}")
+                self.log_message(f"🔄 Navegación reversa a: {prev_node}")
+            else:
+                # Fallback: blind move si no hay nodo anterior
+                self.log_message("⚠️ Sin nodo anterior, usando movimiento ciego")
+                self.perform_blind_move(-0.5, 2000)
             
         elif self.mission_phase == 9:
             # Phase 9: Navigate to Home
@@ -357,8 +392,28 @@ class ControlPanel:
         
         if source == "NAV" and status == "REACHED":
             # Navigation leg complete
-            if self.mission_phase in [1, 5, 9]: # Only advance if we are in a Nav phase
-                self.log_message("✅ Tramo NAV completado. Avanzando...")
+            if self.mission_phase == 1:
+                # Guardamos el nodo anterior al llegar al origen
+                self.origin_previous_node = self.ros_node.last_previous_node
+                self.log_message(f"📍 Nodo anterior origen: {self.origin_previous_node}")
+                self.log_message("✅ Llegado a Origen. Avanzando...")
+                self.root.after(1000, self.advance_phase)
+            elif self.mission_phase == 5:
+                # Guardamos el nodo anterior al llegar al target
+                self.target_previous_node = self.ros_node.last_previous_node
+                self.log_message(f"📍 Nodo anterior target: {self.target_previous_node}")
+                self.log_message("✅ Llegado a Target. Avanzando...")
+                self.root.after(1000, self.advance_phase)
+            elif self.mission_phase == 4:
+                # Retroceso completado desde origen
+                self.log_message("✅ Retroceso completado. Avanzando...")
+                self.root.after(500, self.advance_phase)
+            elif self.mission_phase == 8:
+                # Retroceso completado desde target
+                self.log_message("✅ Retroceso completado. Avanzando...")
+                self.root.after(500, self.advance_phase)
+            elif self.mission_phase == 9:
+                self.log_message("✅ Llegado a HOME. Misión completada.")
                 self.root.after(1000, self.advance_phase)
                 
         # Docking status ignored as we use blind approach now
