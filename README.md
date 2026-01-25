@@ -197,7 +197,7 @@ El botón **PARADA DE EMERGENCIA** funciona como toggle:
 El control del elevador se implementa en `lift_controller.py`:
 
 1. **Enganche** (topic `/agarre`):
-   - Busca el pallet más cercano (< 10m)
+   - Busca el pallet más cercano (< 3m)
    - Lo "engancha" y comienza a seguir al forklift
    - Actualiza posición a 50Hz mediante comunicación con MVSim
 
@@ -210,7 +210,7 @@ El control del elevador se implementa en `lift_controller.py`:
 | Parámetro | Valor | Descripción |
 |-----------|-------|-------------|
 | `GRASP_OFFSET_X` | 0.8 m | Distancia pallet-robot |
-| `MAX_GRASP_DISTANCE` | 10.0 m | Distancia máxima de enganche |
+| `MAX_GRASP_DISTANCE` | 3.0 m | Distancia máxima de enganche |
 
 ---
 
@@ -274,8 +274,8 @@ ros2 run autonomous_forklift graph_editor.py
 | Nombre | Rol |
 |--------|-----|
 | Hugo Sevilla Martínez | Desarrollo |
-| Hugo López Pastor | Desarrollo |
 | Juan Diego Serrato Tovar | Desarrollo |
+| Hugo López Pastor | Desarrollo |
 | Pablo Molina Pérez | Desarrollo |
 
 ---
