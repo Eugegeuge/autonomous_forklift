@@ -47,13 +47,10 @@ install(DIRECTORY
 # Install Python scripts
 install(PROGRAMS
   scripts/graph_visualizer.py
-  scripts/test_path_planning.py
   scripts/waypoint_follower.py
-  scripts/map_builder.py
   scripts/interface_node.py
   scripts/graph_editor.py
   scripts/lift_controller.py
-  scripts/save_map.py
   DESTINATION lib/${PROJECT_NAME}
 )
 
