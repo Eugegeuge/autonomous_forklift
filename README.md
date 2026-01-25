@@ -118,7 +118,7 @@ ros2 run autonomous_forklift save_map.py
 ```bash
 ros2 run autonomous_forklift graph_editor.py
 ```
-Luego abre el navegador en: `http://localhost:5000`
+Luego abre el navegador en: `http://localhost:8000`
 
 ### 4. Control Manual (Teleoperación)
 
@@ -222,7 +222,7 @@ El grafo de navegación se almacena en formato GeoJSON en `config/warehouse_grap
 
 ```bash
 ros2 run autonomous_forklift graph_editor.py
-# Abrir http://localhost:5000
+# Abrir http://localhost:8000
 ```
 
 ### Funcionalidades
