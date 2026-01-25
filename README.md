@@ -1,4 +1,4 @@
-# 🚜 Autonomous Forklift - Sistema de Carretilla Autónoma
+# Autonomous Forklift - Sistema de Carretilla Autónoma
 
 ![ROS 2](https://img.shields.io/badge/ROS_2-Humble-blue)
 ![Simulator](https://img.shields.io/badge/Simulator-MVSim-green)
